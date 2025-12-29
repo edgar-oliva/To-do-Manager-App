@@ -52,28 +52,38 @@
     "tasks": {
         "placeholder": "What do you need to do?",
         "addBtn": "Add",
-        "priority": {
-            "high": "High Priority",
-            "medium": "Medium Priority",
-            "low": "Low Priority"
-        },
-        "timePlaceholder": "Time",
         "empty": "No tasks yet. Add one to start!",
-        "worked": "worked",
-        "startBtn": "Start",
+        "scheduleBtn": "Schedule Task",
         "editTooltip": "Edit task",
         "calendarTooltip": "Add to Google Calendar"
+    },
+    "schedule": {
+        "title": "Schedule Task",
+        "dateLabel": "Date",
+        "repeatLabel": "Repeat",
+        "none": "Don't repeat",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly",
+        "saveBtn": "Schedule",
+        "cancelBtn": "Cancel"
+    },
+    "history": {
+        "title": "Completed Tasks",
+        "empty": "No completed tasks yet.",
+        "backBtn": "Back to Tasks"
     },
     "edit": {
         "title": "Edit Task",
         "nameLabel": "Task Name",
-        "priorityLabel": "Priority",
-        "timeLabel": "Estimated Time",
+        "dateLabel": "Date",
+        "repeatLabel": "Repeat",
         "saveBtn": "Save",
         "cancelBtn": "Cancel"
     },
     "calendar": {
         "title": "Add to Google Calendar",
+        "todayTasks": "Today tasks",
         "dateLabel": "Date",
         "timeLabel": "Time",
         "addBtn": "Add to Calendar",
@@ -82,7 +92,6 @@
     "stats": {
         "totalTasks": "Total Tasks",
         "completed": "Completed",
-        "totalTime": "Total Time",
         "progress": "Progress"
     },
     "footer": {
@@ -92,7 +101,15 @@
     "menu": {
         "stats": "Statistics",
         "theme": "Toggle Theme",
+        "history": "Completed Tasks",
         "restart": "Restart App",
-        "restartConfirm": "Are you sure? This will delete all tasks and stats."
+        "restartConfirm": "Are you sure? This will delete all tasks and stats.",
+        "deleteConfirm": {
+            "title": "Recurring Task",
+            "message": "This is a recurring task. Do you want to delete only this session or all future occurrences?",
+            "onlyThis": "Only this session",
+            "allOccurrences": "All future tasks",
+            "cancel": "Cancel"
+        }
     }
 }

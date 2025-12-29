@@ -52,28 +52,38 @@
     "tasks": {
         "placeholder": "¿Qué necesitas hacer?",
         "addBtn": "Agregar",
-        "priority": {
-            "high": "Prioridad alta",
-            "medium": "Prioridad media",
-            "low": "Prioridad baja"
-        },
-        "timePlaceholder": "Tiempo",
         "empty": "No hay tareas aún. ¡Agrega una para empezar!",
-        "worked": "trabajados",
-        "startBtn": "Iniciar",
+        "scheduleBtn": "Programar Tarea",
         "editTooltip": "Editar tarea",
         "calendarTooltip": "Agregar a Google Calendar"
+    },
+    "schedule": {
+        "title": "Programar Tarea",
+        "dateLabel": "Fecha",
+        "repeatLabel": "Repetir",
+        "none": "No repetir",
+        "daily": "Diario",
+        "weekly": "Semanal",
+        "monthly": "Mensual",
+        "saveBtn": "Programar",
+        "cancelBtn": "Cancelar"
+    },
+    "history": {
+        "title": "Tareas Completadas",
+        "empty": "No hay tareas completadas aún.",
+        "backBtn": "Volver a Tareas"
     },
     "edit": {
         "title": "Editar Tarea",
         "nameLabel": "Nombre de la tarea",
-        "priorityLabel": "Prioridad",
-        "timeLabel": "Tiempo estimado",
+        "dateLabel": "Fecha",
+        "repeatLabel": "Repetir",
         "saveBtn": "Guardar",
         "cancelBtn": "Cancelar"
     },
     "calendar": {
         "title": "Agregar a Google Calendar",
+        "todayTasks": "Tareas de hoy",
         "dateLabel": "Fecha",
         "timeLabel": "Hora",
         "addBtn": "Agregar a Calendar",
@@ -82,7 +92,6 @@
     "stats": {
         "totalTasks": "Tareas Totales",
         "completed": "Completadas",
-        "totalTime": "Tiempo Total",
         "progress": "Progreso"
     },
     "footer": {
@@ -92,7 +101,15 @@
     "menu": {
         "stats": "Estadísticas",
         "theme": "Cambiar Tema",
+        "history": "Tareas Completadas",
         "restart": "Reiniciar App",
-        "restartConfirm": "¿Estás seguro? Esto borrará todas las tareas y estadísticas."
+        "restartConfirm": "¿Estás seguro? Esto borrará todas las tareas y estadísticas.",
+        "deleteConfirm": {
+            "title": "Tarea Recurrente",
+            "message": "Esta es una tarea recurrente. ¿Quieres eliminar solo esta sesión o todas las ocurrencias futuras?",
+            "onlyThis": "Solo esta sesión",
+            "allOccurrences": "Todas las tareas futuras",
+            "cancel": "Cancelar"
+        }
     }
 }

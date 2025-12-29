@@ -1,7 +1,7 @@
 {
   "name": "to-do-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.8.3",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:build": "tsup electron/main.ts --format cjs --out-dir dist-electron --clean --external electron",
+    "electron:build": "tsup electron/main.ts electron/preload.ts --format cjs --out-dir dist-electron --clean --external electron",
     "electron:start": "npm run electron:build && electron ."
   },
   "dependencies": {
