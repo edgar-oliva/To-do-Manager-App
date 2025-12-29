@@ -86,7 +86,13 @@
         "progress": "Progress"
     },
     "footer": {
-        "dark": "Dark mode enabled - Protect your eyes while being productive 🌙",
-        "light": "Light mode enabled - Let's be productive! ☀️"
+        "dark": "Dark mode enabled - Protect your eyes while being productive",
+        "light": "Light mode enabled - Let's be productive!"
+    },
+    "menu": {
+        "stats": "Statistics",
+        "theme": "Toggle Theme",
+        "restart": "Restart App",
+        "restartConfirm": "Are you sure? This will delete all tasks and stats."
     }
 }

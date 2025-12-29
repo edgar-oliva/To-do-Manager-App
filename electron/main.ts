@@ -28,6 +28,8 @@ function createWindow() {
     log('isDev: ' + isDev);
     log('__dirname: ' + __dirname);
 
+    win.setTitle('Time Manager v1.4');
+
     if (isDev) {
         win.loadURL('http://localhost:5173');
         win.webContents.openDevTools();
@@ -46,7 +48,24 @@ function createWindow() {
             log('loadFile failed: ' + e);
             win.loadURL('data:text/html,<h1>Error loading app</h1><p>Check desktop log</p>');
         });
-        // win.webContents.openDevTools();
+
+        // Strictly prevent DevTools
+        win.webContents.on('devtools-opened', () => {
+            win.webContents.closeDevTools();
+        });
+
+        // Disable keyboard shortcuts for DevTools
+        win.webContents.on('before-input-event', (event, input) => {
+            if ((input.control || input.meta) && input.shift && input.key.toLowerCase() === 'i') {
+                event.preventDefault();
+            }
+            if ((input.control || input.meta) && input.alt && input.key.toLowerCase() === 'i') {
+                event.preventDefault();
+            }
+            if (input.key === 'F12') {
+                event.preventDefault();
+            }
+        });
     }
 
     win.webContents.setWindowOpenHandler(({ url }) => {

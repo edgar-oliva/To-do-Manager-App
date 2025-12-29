@@ -14,7 +14,7 @@ i18n
                 translation: esDocs
             }
         },
-        lng: 'es', // Default language
+        lng: 'en', // Default language
         fallbackLng: 'en',
         interpolation: {
             escapeValue: false

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, Plus, Trash2, CheckCircle, Circle, Timer, Calendar, Coffee, Zap, Shield, Sun, Moon, AlertCircle, ArrowUp, Minus, Edit2, Languages } from 'lucide-react';
+import { Clock, Plus, Trash2, CheckCircle, Circle, Timer, Calendar, Coffee, Zap, Shield, Sun, Moon, AlertCircle, ArrowUp, Minus, Edit2, MoreVertical, RotateCcw, Check } from 'lucide-react';
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -27,6 +27,35 @@ export default function App() {
   const [editTaskPriority, setEditTaskPriority] = useState('media');
   const [editTaskTime, setEditTaskTime] = useState('30');
   const [editTaskTimeUnit, setEditTaskTimeUnit] = useState('min');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: any) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const resetApp = () => {
+    if (confirm(t('menu.restartConfirm'))) {
+      localStorage.clear();
+      window.location.reload();
+    }
+    setIsMenuOpen(false);
+  };
+
+  const changeLanguage = (lang: string) => {
+    i18n.changeLanguage(lang);
+    // Keep menu open or close it? User said "select between", usually easier if it stays open or closes. Closes is standard.
+    // However, updating language might cause re-render but that's fine.
+  };
 
   useEffect(() => {
     const today = new Date();
@@ -69,10 +98,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [focusMode, isBreak, focusType]);
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'en' ? 'es' : 'en';
-    i18n.changeLanguage(newLang);
-  };
+
 
   const playAlert = () => {
     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUKbk7q1jHQU2kdj03IUlBSp4yPDajz0KFV6z6eyrVQ==');
@@ -94,7 +120,14 @@ export default function App() {
 
   const addTask = () => {
     if (newTask.trim()) {
+      // Limit to 300 characters
+      if (newTask.length > 300) return;
+
       const timeInMinutes = timeUnit === 'hrs' ? parseInt(estimatedTime) * 60 : parseInt(estimatedTime);
+
+      // Limit to 16 hours
+      if (timeInMinutes > 16 * 60) return;
+
       setTasks([...tasks, {
         id: Date.now(),
         text: newTask,
@@ -266,6 +299,7 @@ export default function App() {
                     type="text"
                     value={editTaskText}
                     onChange={(e) => setEditTaskText(e.target.value)}
+                    maxLength={300}
                     className={`w-full px-4 py-2 rounded-lg border-2 ${inputClass} focus:border-blue-500 outline-none`}
                   />
                 </div>
@@ -409,26 +443,12 @@ export default function App() {
         )}
 
         <div className={`${cardClass} rounded-2xl shadow-xl p-6 mb-6 border`}>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 relative">
             <div className="flex items-center gap-3">
               <Clock className={`w-8 h-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               <h1 className={`text-3xl font-bold ${textClass}`}>{t('appTitle')}</h1>
             </div>
             <div className="flex gap-2 items-center">
-              <button
-                onClick={toggleLanguage}
-                className={`p-2 rounded-lg ${buttonSecondaryClass} transition`}
-                title={i18n.language === 'en' ? 'Español' : 'English'}
-              >
-                <Languages className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-lg ${buttonSecondaryClass} transition`}
-                title={darkMode ? t('modes.light') : t('modes.dark')}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
               <button
                 onClick={() => setView('tareas')}
                 className={`px-4 py-2 rounded-lg transition ${view === 'tareas' ? `${buttonPrimaryClass} text-white` : buttonSecondaryClass}`}
@@ -441,12 +461,69 @@ export default function App() {
               >
                 {t('modes.focus')}
               </button>
-              <button
-                onClick={() => setView('estadisticas')}
-                className={`px-4 py-2 rounded-lg transition ${view === 'estadisticas' ? `${buttonPrimaryClass} text-white` : buttonSecondaryClass}`}
-              >
-                {t('modes.stats')}
-              </button>
+
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className={`p-2 rounded-lg ${buttonSecondaryClass} transition`}
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+
+                {isMenuOpen && (
+                  <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-2xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} z-50 overflow-hidden`}>
+                    <div className="p-2 space-y-1">
+                      {/* Stats */}
+                      <button
+                        onClick={() => { setView('estadisticas'); setIsMenuOpen(false); }}
+                        className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${view === 'estadisticas' ? (darkMode ? 'bg-slate-700' : 'bg-slate-100') : (darkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50')} ${textClass}`}
+                      >
+                        <ArrowUp className="w-4 h-4 rotate-45" /> {/* Using generic icon for stats if needed or just text */}
+                        {t('menu.stats')}
+                      </button>
+
+                      {/* Theme */}
+                      <button
+                        onClick={() => setDarkMode(!darkMode)}
+                        className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textClass}`}
+                      >
+                        {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        {t('menu.theme')}
+                      </button>
+
+                      <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
+
+                      {/* Language */}
+                      <div className={`px-4 py-2 text-xs font-bold uppercase tracking-wider ${textSecondaryClass} opacity-70`}>Language</div>
+                      <button
+                        onClick={() => changeLanguage('en')}
+                        className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textClass}`}
+                      >
+                        <span>English</span>
+                        {i18n.language === 'en' && <Check className="w-4 h-4 text-blue-500" />}
+                      </button>
+                      <button
+                        onClick={() => changeLanguage('es')}
+                        className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-50'} ${textClass}`}
+                      >
+                        <span>Español</span>
+                        {i18n.language === 'es' && <Check className="w-4 h-4 text-blue-500" />}
+                      </button>
+
+                      <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
+
+                      {/* Restart */}
+                      <button
+                        onClick={resetApp}
+                        className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition text-red-500 ${darkMode ? 'hover:bg-slate-700' : 'hover:bg-red-50'}`}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        {t('menu.restart')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -527,6 +604,7 @@ export default function App() {
                     value={newTask}
                     onChange={(e) => setNewTask(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addTask()}
+                    maxLength={300}
                     placeholder={t('tasks.placeholder')}
                     className={`w-full px-4 py-3 rounded-lg border-2 ${inputClass} focus:border-blue-500 outline-none`}
                   />
@@ -626,13 +704,15 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => activeTimer === task.id ? stopTimer() : startTimer(task.id)}
-                            className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${activeTimer === task.id
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : `${buttonPrimaryClass} text-white`
+                            className={`px-4 py-2 rounded-lg transition flex items-center justify-center gap-2 w-32 ${activeTimer === task.id
+                              ? 'bg-red-600 text-white hover:bg-red-700'
+                              : `${buttonPrimaryClass} text-white`
                               }`}
                           >
-                            <Timer className="w-4 h-4" />
-                            {activeTimer === task.id ? formatTime(timerSeconds) : t('tasks.startBtn')}
+                            <Timer className="w-4 h-4 flex-shrink-0" />
+                            <span className="tabular-nums">
+                              {activeTimer === task.id ? formatTime(timerSeconds) : t('tasks.startBtn')}
+                            </span>
                           </button>
                         </>
                       )}
@@ -682,10 +762,13 @@ export default function App() {
           )}
         </div>
 
-        <div className={`text-center ${textSecondaryClass} text-sm`}>
-          💡 {darkMode ? t('footer.dark') : t('footer.light')}
+        <div className={`text-center ${textSecondaryClass} text-sm mb-2`}>
+          {darkMode ? t('footer.dark') : t('footer.light')}
+        </div>
+        <div className={`text-center ${textSecondaryClass} text-xs font-semibold opacity-75`}>
+          Created by Edgar Martínez Oliva
         </div>
       </div>
-    </div>
+    </div >
   );
 }

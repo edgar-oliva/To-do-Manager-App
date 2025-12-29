@@ -86,7 +86,13 @@
         "progress": "Progreso"
     },
     "footer": {
-        "dark": "Modo oscuro activado - Cuida tus ojos mientras eres productivo 🌙",
-        "light": "Modo claro activado - ¡A ser productivo! ☀️"
+        "dark": "Modo oscuro activado - Cuida tus ojos mientras eres productivo",
+        "light": "Modo claro activado - ¡A ser productivo!"
+    },
+    "menu": {
+        "stats": "Estadísticas",
+        "theme": "Cambiar Tema",
+        "restart": "Reiniciar App",
+        "restartConfirm": "¿Estás seguro? Esto borrará todas las tareas y estadísticas."
     }
 }
