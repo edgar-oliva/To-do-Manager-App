@@ -1,0 +1,92 @@
+{
+    "appTitle": "My Time Manager",
+    "modes": {
+        "tasks": "Tasks",
+        "focus": "Focus",
+        "stats": "Stats",
+        "dark": "Dark mode",
+        "light": "Light mode"
+    },
+    "focus": {
+        "title": "🎯 Anti-Distraction",
+        "subtitle": "Choose a focus session and forget about Instagram for a while",
+        "pomodoro": {
+            "title": "Pomodoro",
+            "desc1": "25 min work",
+            "desc2": "5 min break"
+        },
+        "shortSprint": {
+            "title": "Short Sprint",
+            "desc1": "15 min focus",
+            "desc2": "For quick tasks"
+        },
+        "deepWork": {
+            "title": "Deep Work",
+            "desc1": "60 min intense",
+            "desc2": "For big projects"
+        },
+        "tips": {
+            "title": "💡 Anti-Instagram Tips",
+            "l1": "Put your phone in another room during sessions",
+            "l2": "Disable social media notifications temporarily",
+            "l3": "Use the \"I got distracted\" button to stay aware",
+            "l4": "eward yourself after every complete session",
+            "l5": "Start with short 15 min sessions and increase"
+        },
+        "distractions": {
+            "title": "Distraction Log",
+            "count": "You got distracted <1>{{count}}</1> {{times}} today",
+            "times_one": "time",
+            "times_other": "times",
+            "feedback1": "Good job! Keep the focus 💪",
+            "feedback2": "Try putting the phone further away 📱",
+            "feedback3": "How about turning off notifications? 🔕",
+            "reportBtn": "😓 I got distracted (log)",
+            "stopBtn": "End Session",
+            "activeTitle": "Focus Mode!",
+            "activeSubtitle": "No distractions, just productivity",
+            "breakTitle": "Rest!",
+            "breakSubtitle": "Take a breath, you deserve it"
+        }
+    },
+    "tasks": {
+        "placeholder": "What do you need to do?",
+        "addBtn": "Add",
+        "priority": {
+            "high": "High Priority",
+            "medium": "Medium Priority",
+            "low": "Low Priority"
+        },
+        "timePlaceholder": "Time",
+        "empty": "No tasks yet. Add one to start!",
+        "worked": "worked",
+        "startBtn": "Start",
+        "editTooltip": "Edit task",
+        "calendarTooltip": "Add to Google Calendar"
+    },
+    "edit": {
+        "title": "Edit Task",
+        "nameLabel": "Task Name",
+        "priorityLabel": "Priority",
+        "timeLabel": "Estimated Time",
+        "saveBtn": "Save",
+        "cancelBtn": "Cancel"
+    },
+    "calendar": {
+        "title": "Add to Google Calendar",
+        "dateLabel": "Date",
+        "timeLabel": "Time",
+        "addBtn": "Add to Calendar",
+        "cancelBtn": "Cancel"
+    },
+    "stats": {
+        "totalTasks": "Total Tasks",
+        "completed": "Completed",
+        "totalTime": "Total Time",
+        "progress": "Progress"
+    },
+    "footer": {
+        "dark": "Dark mode enabled - Protect your eyes while being productive 🌙",
+        "light": "Light mode enabled - Let's be productive! ☀️"
+    }
+}

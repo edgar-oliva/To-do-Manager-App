@@ -1,0 +1,92 @@
+{
+    "appTitle": "Mi Gestor de Tiempo",
+    "modes": {
+        "tasks": "Tareas",
+        "focus": "Enfoque",
+        "stats": "Stats",
+        "dark": "Modo oscuro",
+        "light": "Modo claro"
+    },
+    "focus": {
+        "title": "🎯 Anti-Distracciones",
+        "subtitle": "Elige una sesión de enfoque y olvídate de Instagram por un rato",
+        "pomodoro": {
+            "title": "Pomodoro",
+            "desc1": "25 min trabajo",
+            "desc2": "5 min descanso"
+        },
+        "shortSprint": {
+            "title": "Sprint Corto",
+            "desc1": "15 min enfoque",
+            "desc2": "Para tareas rápidas"
+        },
+        "deepWork": {
+            "title": "Enfoque Profundo",
+            "desc1": "60 min intensos",
+            "desc2": "Para proyectos grandes"
+        },
+        "tips": {
+            "title": "💡 Tips Anti-Instagram",
+            "l1": "Pon tu celular en otra habitación durante las sesiones",
+            "l2": "Desactiva notificaciones de redes sociales temporalmente",
+            "l3": "Usa el botón \"Me distraje\" para tomar consciencia",
+            "l4": "Recompénsate después de cada sesión completa",
+            "l5": "Empieza con sesiones cortas de 15 min y ve subiendo"
+        },
+        "distractions": {
+            "title": "Registro de Distracciones",
+            "count": "Te has distraído <1>{{count}}</1> {{times}} hoy",
+            "times_one": "vez",
+            "times_other": "veces",
+            "feedback1": "¡Buen trabajo! Mantén el enfoque 💪",
+            "feedback2": "Intenta poner el celular más lejos 📱",
+            "feedback3": "¿Qué tal si apagas las notificaciones? 🔕",
+            "reportBtn": "😓 Me distraje (registrar)",
+            "stopBtn": "Terminar sesión",
+            "activeTitle": "¡Modo Enfoque!",
+            "activeSubtitle": "Sin distracciones, solo productividad",
+            "breakTitle": "¡Descansa!",
+            "breakSubtitle": "Toma un respiro, lo mereces"
+        }
+    },
+    "tasks": {
+        "placeholder": "¿Qué necesitas hacer?",
+        "addBtn": "Agregar",
+        "priority": {
+            "high": "Prioridad alta",
+            "medium": "Prioridad media",
+            "low": "Prioridad baja"
+        },
+        "timePlaceholder": "Tiempo",
+        "empty": "No hay tareas aún. ¡Agrega una para empezar!",
+        "worked": "trabajados",
+        "startBtn": "Iniciar",
+        "editTooltip": "Editar tarea",
+        "calendarTooltip": "Agregar a Google Calendar"
+    },
+    "edit": {
+        "title": "Editar Tarea",
+        "nameLabel": "Nombre de la tarea",
+        "priorityLabel": "Prioridad",
+        "timeLabel": "Tiempo estimado",
+        "saveBtn": "Guardar",
+        "cancelBtn": "Cancelar"
+    },
+    "calendar": {
+        "title": "Agregar a Google Calendar",
+        "dateLabel": "Fecha",
+        "timeLabel": "Hora",
+        "addBtn": "Agregar a Calendar",
+        "cancelBtn": "Cancelar"
+    },
+    "stats": {
+        "totalTasks": "Tareas Totales",
+        "completed": "Completadas",
+        "totalTime": "Tiempo Total",
+        "progress": "Progreso"
+    },
+    "footer": {
+        "dark": "Modo oscuro activado - Cuida tus ojos mientras eres productivo 🌙",
+        "light": "Modo claro activado - ¡A ser productivo! ☀️"
+    }
+}
