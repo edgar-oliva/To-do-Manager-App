@@ -1,1 +1,34 @@
 @import "tailwindcss";
+
+@theme {
+    --color-gold-lime: linear-gradient(to right, #FFD700, #D9FF00);
+}
+
+:root {
+    color-scheme: light dark;
+}
+
+/* Fix date picker icon visibility in dark mode */
+[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+    cursor: pointer;
+}
+
+.dark [type="date"]::-webkit-calendar-picker-indicator,
+.night [type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}
+
+.bg-gold-lime {
+    background: linear-gradient(90deg, #FFD700 0%, #D9FF00 100%);
+}
+
+.bg-night-light {
+    background: #FF7043;
+}
+
+.text-gold-lime {
+    background: linear-gradient(90deg, #FFD700 0%, #D9FF00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
