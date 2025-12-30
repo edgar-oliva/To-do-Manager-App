@@ -45,7 +45,7 @@ ipcMain.handle('load-data', async (event, key) => {
 function createWindow() {
     log('createWindow called');
 
-    app.name = 'Time Manager';
+    app.name = 'My Task Manager';
 
     const win = new BrowserWindow({
         width: 1200,
@@ -60,7 +60,7 @@ function createWindow() {
     const isDev = !app.isPackaged;
     log('isDev: ' + isDev);
 
-    win.setTitle('Time Manager v1.8.3');
+    win.setTitle('My Task Manager v1.8.4');
 
     if (isDev) {
         win.loadURL('http://localhost:5173');

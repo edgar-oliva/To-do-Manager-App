@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, Plus, Trash2, CheckCircle, Circle, Timer, Calendar, Coffee, Zap, Shield, Sun, Moon, ArrowUp, Edit2, MoreVertical, RotateCcw, Check } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, ArrowUp, Edit2, MoreVertical, RotateCcw, Check, CheckCheck, SquareArrowRight } from 'lucide-react';
 
 interface Task {
   id: number;
@@ -12,6 +12,7 @@ interface Task {
 
 interface HistoryEntry extends Task {
   completedAt: string;
+  historyId: number;
 }
 
 declare global {
@@ -65,7 +66,6 @@ export default function App() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleTaskDate, setScheduleTaskDate] = useState('');
   const [repeatRule, setRepeatRule] = useState('none');
-  const [showHistory, setShowHistory] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -85,11 +85,6 @@ export default function App() {
   }, []);
 
   const [view, setView] = useState('tareas');
-  const [focusMode, setFocusMode] = useState(false);
-  const [focusType, setFocusType] = useState('pomodoro');
-  const [focusSeconds, setFocusSeconds] = useState(0);
-  const [isBreak, setIsBreak] = useState(false);
-  const [distractionCount, setDistractionCount] = useState(0);
   const [darkMode, setDarkMode] = useState(true);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedTaskForCalendar, setSelectedTaskForCalendar] = useState<Task | null>(null);
@@ -99,7 +94,13 @@ export default function App() {
   const [editTaskText, setEditTaskText] = useState('');
   const [editTaskDate, setEditTaskDate] = useState('');
   const [editTaskRepeat, setEditTaskRepeat] = useState('none');
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   const resetApp = () => {
     if (confirm(t('menu.restartConfirm'))) {
@@ -153,7 +154,10 @@ export default function App() {
 
   useEffect(() => {
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const timeStr = today.toTimeString().slice(0, 5);
     setCalendarDate(dateStr);
     setCalendarTime(timeStr);
@@ -162,48 +166,14 @@ export default function App() {
   useEffect(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    setScheduleTaskDate(tomorrow.toISOString().split('T')[0]);
-    let interval: any;
-    if (focusMode) {
-      interval = setInterval(() => {
-        setFocusSeconds(s => {
-          const maxTime = isBreak ? 300 : (focusType === 'pomodoro' ? 1500 : focusType === 'short' ? 900 : 3600);
-          if (s + 1 >= maxTime) {
-            playAlert();
-            if (!isBreak) {
-              setIsBreak(true);
-              return 0;
-            } else {
-              setIsBreak(false);
-              return 0;
-            }
-          }
-          return s + 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [focusMode, isBreak, focusType]);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    setScheduleTaskDate(`${year}-${month}-${day}`);
+  }, []);
 
 
 
-  const playAlert = () => {
-    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUKbk7q1jHQU2kdj03IUlBSp4yPDajz0KFV6z6eyrVQ==');
-    audio.play().catch(() => { });
-  };
-
-  const startFocusMode = (type: string) => {
-    setFocusType(type);
-    setFocusMode(true);
-    setFocusSeconds(0);
-    setIsBreak(false);
-  };
-
-  const stopFocusMode = () => {
-    setFocusMode(false);
-    setFocusSeconds(0);
-    setIsBreak(false);
-  };
 
   const addTask = (isScheduled = false) => {
     if (newTask.trim()) {
@@ -224,6 +194,15 @@ export default function App() {
     }
   };
 
+  const getLocalDateStr = (daysToAdd = 0) => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysToAdd);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getNextDate = (currentDate: string, repeat: string) => {
     const date = new Date(currentDate + 'T12:00:00'); // Midday to avoid DST issues
     if (repeat === 'daily') date.setDate(date.getDate() + 1);
@@ -232,25 +211,51 @@ export default function App() {
     return date.toISOString().split('T')[0];
   };
 
-  const toggleTask = (id: number) => {
+  const toggleTask = (id: number, isHistory = false) => {
+    if (isHistory) {
+      const historyEntry = completedHistory.find(h => h.historyId === id);
+      if (!historyEntry) return;
+
+      // Handle un-completing (moving back from history to pending)
+      const restoredTask: Task = {
+        id: historyEntry.id,
+        text: historyEntry.text,
+        completed: false,
+        dueDate: historyEntry.dueDate,
+        repeat: historyEntry.repeat
+      };
+
+      if (historyEntry.repeat !== 'none') {
+        // Find if there's already a future instance (bumping)
+        // For repeating tasks, completion bumps the date. Un-completing restores the date to the history instance's dueDate.
+        setTasks(prev => prev.map(t => t.id === historyEntry.id ? restoredTask : t));
+      } else {
+        setTasks(prev => [...prev, restoredTask]);
+      }
+      setCompletedHistory(prev => prev.filter(h => h.historyId !== id));
+      return;
+    }
+
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
     if (!task.completed) {
       // Mark as completed and handle history/repeat
-      const historyEntry = { ...task, completed: true, completedAt: new Date().toISOString() };
+      const historyEntry: HistoryEntry = {
+        ...task,
+        completed: true,
+        completedAt: getLocalDateStr(), // Use local date string instead of UTC ISO
+        historyId: Date.now()
+      };
       setCompletedHistory([historyEntry, ...completedHistory]);
 
       if (task.repeat !== 'none') {
         setTasks(tasks.map(t =>
-          t.id === id ? { ...t, dueDate: getNextDate(selectedDate, t.repeat), completed: false } : t
+          t.id === id ? { ...t, dueDate: getNextDate(t.dueDate, t.repeat), completed: false } : t
         ));
       } else {
         setTasks(tasks.filter(t => t.id !== id));
       }
-    } else {
-      // If we allowed untoggling (rare in this flow but good to have)
-      setTasks(tasks.map(t => t.id === id ? { ...t, completed: false } : t));
     }
   };
 
@@ -278,9 +283,6 @@ export default function App() {
 
 
 
-  const reportDistraction = () => {
-    setDistractionCount(prev => prev + 1);
-  };
 
   const openCalendarModal = (task: Task) => {
     setSelectedTaskForCalendar(task);
@@ -325,38 +327,50 @@ export default function App() {
     setShowCalendarModal(false);
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
 
 
 
-  const isTaskOnDate = (task: Task, date: string) => {
-    if (task.dueDate === date) return true;
-    if (task.repeat === 'none') return false;
+  const todayStr = getLocalDateStr();
 
-    const taskDate = new Date(task.dueDate + 'T12:00:00');
-    const targetDate = new Date(date + 'T12:00:00');
+  // 1. Get recurring/scheduled tasks for the selected date PLUS past pending tasks if today
+  const baseTasks = tasks.filter(task => {
+    if (selectedDate === todayStr) {
+      return task.dueDate === selectedDate || (task.dueDate < todayStr && !task.completed);
+    }
+    return task.dueDate === selectedDate;
+  });
 
-    if (targetDate < taskDate) return false;
+  // 2. Get history entries completed today locally
+  const historyCompletedToday = completedHistory
+    .filter(h => h.completedAt === todayStr)
+    .map(h => ({ ...h, id: h.historyId, isFromHistory: true }));
 
-    const diffTime = targetDate.getTime() - taskDate.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  // 3. Combine them for the current view
+  const combinedTasks = selectedDate === todayStr
+    ? [...baseTasks, ...historyCompletedToday]
+    : baseTasks;
 
-    if (task.repeat === 'daily') return true;
-    if (task.repeat === 'weekly') return diffDays % 7 === 0;
-    if (task.repeat === 'monthly') return targetDate.getDate() === taskDate.getDate();
+  // 4. Final Sort: 
+  //   - Pending Overdue (earliest first)
+  //   - Pending Today
+  //   - Completed Today (latest first)
+  const sortedTasks = [...combinedTasks].sort((a, b) => {
+    const aComp = (a as any).completed;
+    const bComp = (b as any).completed;
 
-    return false;
-  };
+    // Put pending first
+    if (aComp !== bComp) return aComp ? 1 : -1;
 
-  const filteredTasks = tasks.filter(task => isTaskOnDate(task, selectedDate));
+    // Both pending: prioritize overdue (earlier dates first)
+    if (!aComp) {
+      if (a.dueDate !== b.dueDate) {
+        return a.dueDate.localeCompare(b.dueDate);
+      }
+      return b.id - a.id; // Secondary: newest first
+    }
 
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    return b.id - a.id; // Newest first
+    // Both completed: newest completion first
+    return b.id - a.id;
   });
 
   const completedTasks = tasks.filter(t => t.completed).length;
@@ -376,7 +390,6 @@ export default function App() {
         <div className={`${cardClass} rounded-2xl shadow-xl p-6 mb-6 border`}>
           <div className="flex items-center justify-between mb-6 relative">
             <div className="flex items-center gap-3">
-              <Clock className={`w-8 h-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               <h1 className={`text-3xl font-bold ${textClass}`}>{t('appTitle')}</h1>
             </div>
             <div className="flex gap-2 items-center">
@@ -387,10 +400,10 @@ export default function App() {
                 {t('modes.tasks')}
               </button>
               <button
-                onClick={() => setView('enfoque')}
-                className={`px-4 py-2 rounded-lg transition ${view === 'enfoque' ? `${buttonPrimaryClass} text-white` : buttonSecondaryClass}`}
+                onClick={() => setView('history')}
+                className={`px-4 py-2 rounded-lg transition ${view === 'history' ? `${buttonPrimaryClass} text-white` : buttonSecondaryClass}`}
               >
-                {t('modes.focus')}
+                {t('menu.history') || 'Completed Tasks'}
               </button>
 
               <div className="relative" ref={menuRef}>
@@ -444,9 +457,9 @@ export default function App() {
                       <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
 
                       {/* History */}
-                      <button onClick={() => { setShowHistory(true); setIsMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"} ${textClass}`}>
-                        <CheckCircle className="w-4 h-4" />
-                        {t("menu.history")}
+                      <button onClick={() => { setView('history'); setIsMenuOpen(false); }} className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"} ${textClass}`}>
+                        <RotateCcw className="w-4 h-4" />
+                        {t("menu.history") || "Completed Tasks"}
                       </button>
                       <div className={`h-px my-1 ${darkMode ? "bg-slate-700" : "bg-slate-100"}`}></div>
                       {/* Restart */}
@@ -464,69 +477,54 @@ export default function App() {
             </div>
           </div>
 
-          {view === 'enfoque' && (
-            <div className="space-y-6">
-              <div className={`${darkMode ? 'bg-gradient-to-r from-blue-800 to-indigo-800' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} rounded-xl p-6 text-white`}>
-                <h2 className="text-2xl font-bold mb-2">{t('focus.title')}</h2>
-                <p className="opacity-90">{t('focus.subtitle')}</p>
+          {view === 'history' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <RotateCcw className={`w-6 h-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                <h2 className={`text-2xl font-bold ${textClass}`}>{t('menu.history') || 'Completed Tasks'}</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  onClick={() => startFocusMode('pomodoro')}
-                  className={`${darkMode ? 'bg-gradient-to-br from-rose-700 to-red-800 border-rose-600' : 'bg-gradient-to-br from-red-500 to-rose-600 border-red-400'} text-white rounded-xl p-6 hover:scale-105 transition transform border`}
-                >
-                  <Timer className="w-12 h-12 mb-3" />
-                  <h3 className="text-xl font-bold mb-2">{t('focus.pomodoro.title')}</h3>
-                  <p className="text-sm opacity-90">{t('focus.pomodoro.desc1')}</p>
-                  <p className="text-sm opacity-90">{t('focus.pomodoro.desc2')}</p>
-                </button>
-
-                <button
-                  onClick={() => startFocusMode('short')}
-                  className={`${darkMode ? 'bg-gradient-to-br from-teal-700 to-emerald-800 border-teal-600' : 'bg-gradient-to-br from-teal-500 to-emerald-600 border-teal-400'} text-white rounded-xl p-6 hover:scale-105 transition transform border`}
-                >
-                  <Zap className="w-12 h-12 mb-3" />
-                  <h3 className="text-xl font-bold mb-2">{t('focus.shortSprint.title')}</h3>
-                  <p className="text-sm opacity-90">{t('focus.shortSprint.desc1')}</p>
-                  <p className="text-sm opacity-90">{t('focus.shortSprint.desc2')}</p>
-                </button>
-
-                <button
-                  onClick={() => startFocusMode('deep')}
-                  className={`${darkMode ? 'bg-gradient-to-br from-blue-700 to-indigo-800 border-blue-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-400'} text-white rounded-xl p-6 hover:scale-105 transition transform border`}
-                >
-                  <Shield className="w-12 h-12 mb-3" />
-                  <h3 className="text-xl font-bold mb-2">{t('focus.deepWork.title')}</h3>
-                  <p className="text-sm opacity-90">{t('focus.deepWork.desc1')}</p>
-                  <p className="text-sm opacity-90">{t('focus.deepWork.desc2')}</p>
-                </button>
-              </div>
-
-              <div className={`${darkMode ? 'bg-slate-700 border-blue-700' : 'bg-blue-50 border-blue-200'} border-2 rounded-xl p-6`}>
-                <h3 className={`font-bold ${darkMode ? 'text-blue-400' : 'text-blue-900'} mb-3 flex items-center gap-2`}>
-                  {t('focus.tips.title')}
-                </h3>
-                <ul className={`space-y-2 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  <li>• {t('focus.tips.l1')}</li>
-                  <li>• {t('focus.tips.l2')}</li>
-                  <li>• {t('focus.tips.l3')}</li>
-                  <li>• {t('focus.tips.l4')}</li>
-                  <li>• {t('focus.tips.l5')}</li>
-                </ul>
-              </div>
-
-              {distractionCount > 0 && (
-                <div className={`${darkMode ? 'bg-slate-700 border-orange-600' : 'bg-orange-50 border-orange-300'} border-2 rounded-xl p-6`}>
-                  <h3 className={`font-bold ${darkMode ? 'text-orange-400' : 'text-orange-900'} mb-2`}>{t('focus.distractions.title')}</h3>
-                  <p className={darkMode ? 'text-slate-300' : 'text-slate-700'}>
-                    <span dangerouslySetInnerHTML={{ __html: t('focus.distractions.count', { count: distractionCount, times: distractionCount === 1 ? t('focus.distractions.times_one') : t('focus.distractions.times_other') }) }}></span>
-                  </p>
-                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'} mt-2`}>
-                    {distractionCount < 3 ? t('focus.distractions.feedback1') :
-                      distractionCount < 6 ? t('focus.distractions.feedback2') :
-                        t('focus.distractions.feedback3')}
-                  </p>
+              {completedHistory.length === 0 ? (
+                <div className={`text-center py-20 ${cardClass} rounded-2xl border-2 border-dashed`}>
+                  <p className={textSecondaryClass}>{t('history.empty') || 'No completed tasks yet.'}</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(
+                    completedHistory.reduce((groups: any, task) => {
+                      const date = task.completedAt.split('T')[0];
+                      if (!groups[date]) groups[date] = [];
+                      groups[date].push(task);
+                      return groups;
+                    }, {})
+                  )
+                    .sort(([a], [b]) => b.localeCompare(a))
+                    .map(([date, dailyTasks]: [string, any]) => (
+                      <div key={date} className="space-y-2">
+                        <h3 className={`text-sm font-bold uppercase tracking-wider ${textSecondaryClass} px-1 mt-4`}>
+                          {date === todayStr ? 'Today' : date}
+                        </h3>
+                        {dailyTasks.map((task: any) => (
+                          <div
+                            key={task.historyId}
+                            className={`${cardClass} p-4 rounded-xl border-2 flex items-center justify-between group`}
+                          >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                              <span className={`font-medium ${textClass} truncate line-through opacity-70`}>
+                                {task.text}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => toggleTask(task.historyId, true)}
+                              className={`text-xs font-bold px-3 py-1 rounded-lg ${darkMode ? 'bg-slate-700 text-blue-400 hover:bg-slate-600' : 'bg-slate-100 text-blue-600 hover:bg-slate-200'} transition opacity-0 group-hover:opacity-100`}
+                            >
+                              Undo
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -543,8 +541,20 @@ export default function App() {
                   className={`px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm`}
                 />
                 <button
-                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                  className={`px-5 py-2 rounded-xl text-sm font-semibold transition-all whitespace-nowrap shadow-sm ${selectedDate === new Date().toISOString().split('T')[0]
+                  onClick={() => {
+                    const d = new Date();
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    setSelectedDate(`${year}-${month}-${day}`);
+                  }}
+                  className={`h-[46px] px-5 rounded-xl text-sm font-bold transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${selectedDate === (() => {
+                    const d = new Date();
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                  })()
                     ? 'bg-blue-600 text-white'
                     : `${darkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-white text-slate-600 border border-slate-200'}`
                     }`}
@@ -572,8 +582,12 @@ export default function App() {
                       {t('tasks.addBtn')}
                     </button>
                     <button
-                      onClick={() => setShowScheduleModal(true)}
-                      className={`flex items-center justify-center gap-2 px-4 py-2.5 border-2 ${darkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'} rounded-xl transition shadow-sm font-bold`}
+                      onClick={() => {
+                        setScheduleTaskDate('');
+                        setRepeatRule('none');
+                        setShowScheduleModal(true);
+                      }}
+                      className={`flex items-center justify-center gap-2 px-4 py-2.5 border-2 ${darkMode ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:border-slate-500' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300'} rounded-xl transition-all shadow-sm font-bold hover:scale-[1.02] active:scale-95`}
                     >
                       <Calendar className="w-5 h-5" />
                       {t('tasks.scheduleBtn')}
@@ -582,68 +596,106 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                {sortedTasks.length === 0 ? (
-                  <div className={`text-center py-12 ${textSecondaryClass}`}>
-                    <Calendar className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">{t('tasks.empty')}</p>
-                  </div>
-                ) : (
-                  sortedTasks.map(task => (
+              <div className="space-y-8">
+                {/* Active Tasks Section */}
+                <div className="space-y-3">
+                  {sortedTasks.filter(t => !t.completed).length === 0 && selectedDate === todayStr ? (
+                    <div className={`text-center py-8 ${textSecondaryClass}`}>
+                      <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-30 text-emerald-500" />
+                      <p className="font-medium">All active tasks completed!</p>
+                    </div>
+                  ) : sortedTasks.filter(t => !t.completed).map(task => (
                     <div
                       key={task.id}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition ${task.completed ? `${darkMode ? 'bg-slate-700 border-slate-600 opacity-60' : 'bg-slate-100 border-slate-200 opacity-60'}` : `${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-300'}`
-                        }`}
+                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${darkMode ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-300 hover:border-slate-400'}`}
                     >
                       <button
                         onClick={() => toggleTask(task.id)}
-                        className="flex-shrink-0"
+                        className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110"
                       >
-                        {task.completed ? (
-                          <CheckCircle className={`w-6 h-6 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                        ) : (
-                          <Circle className={`w-6 h-6 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
-                        )}
+                        <Circle className={`w-6 h-6 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <p className={`font-medium ${task.completed ? `line-through ${textSecondaryClass}` : textClass}`}>
-                          {task.text}
-                        </p>
-                        <div className={`flex gap-3 mt-0.5 text-xs font-medium ${textSecondaryClass}`}>
-                          {task.repeat !== 'none' && (
-                            <span className="flex items-center gap-1 uppercase tracking-wider text-[10px] bg-blue-500/10 px-1.5 py-0.5 rounded text-blue-500">
-                              <RotateCcw size={10} /> {task.repeat}
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${textClass}`}>{task.text}</p>
+                          {task.dueDate < todayStr && !task.completed && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${darkMode ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-rose-50 text-rose-600 border border-rose-200'}`}
+                              title={`Scheduled for ${task.dueDate}`}
+                            >
+                              Due
                             </span>
                           )}
                         </div>
+                        {task.repeat !== 'none' && (
+                          <div className="flex gap-3 mt-1 text-xs font-medium">
+                            <span className="flex items-center gap-1 uppercase tracking-wider text-[10px] bg-blue-500/10 px-1.5 py-0.5 rounded text-blue-500">
+                              <RotateCcw size={10} /> {task.repeat}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
-                      <>
+                      <div className="flex gap-1">
                         <button
                           onClick={() => openEditModal(task)}
-                          className={`p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-600 hover:bg-slate-100'} rounded-lg transition`}
+                          className={`p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-blue-400' : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600'} rounded-lg transition-colors`}
                           title={t('tasks.editTooltip')}
                         >
-                          <Edit2 className="w-5 h-5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => openCalendarModal(task)}
-                          className={`p-2 ${darkMode ? 'text-blue-400 hover:bg-slate-700' : 'text-blue-600 hover:bg-blue-50'} rounded-lg transition`}
+                          className={`p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-emerald-400' : 'text-slate-600 hover:bg-slate-100 hover:text-emerald-600'} rounded-lg transition-colors`}
                           title={t('tasks.calendarTooltip')}
                         >
-                          <Calendar className="w-5 h-5" />
+                          <Calendar className="w-4 h-4" />
                         </button>
-                      </>
-
-                      <button
-                        onClick={() => confirmDelete(task)}
-                        className={`p-2 ${darkMode ? 'text-red-400 hover:bg-slate-700' : 'text-red-500 hover:bg-red-50'} rounded-lg transition`}
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                        <button
+                          onClick={() => confirmDelete(task)}
+                          className={`p-2 ${darkMode ? 'text-slate-400 hover:bg-slate-700 hover:text-red-400' : 'text-slate-600 hover:bg-slate-100 hover:text-red-600'} rounded-lg transition-colors`}
+                          title={t('tasks.deleteTooltip')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  ))
+                  ))}
+                </div>
+
+                {/* Completed Today Section */}
+                {sortedTasks.filter(t => t.completed).length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-slate-700/30">
+                    <div className="flex items-center gap-2 px-1">
+                      <CheckCheck className={`w-4 h-4 ${darkMode ? 'text-emerald-500/70' : 'text-emerald-600/70'}`} />
+                      <h3 className={`text-sm font-bold uppercase tracking-widest ${textSecondaryClass} opacity-80`}>
+                        TASKS COMPLETED TODAY
+                      </h3>
+                      <div className={`h-px flex-1 ${darkMode ? 'bg-slate-700/50' : 'bg-slate-200'} ml-2`}></div>
+                    </div>
+                    <div className="space-y-3">
+                      {sortedTasks.filter(t => t.completed).map(task => (
+                        <div
+                          key={task.id}
+                          className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 ${darkMode ? 'bg-slate-700/40 border-slate-800 opacity-60' : 'bg-slate-50 border-slate-100 opacity-60'} animate-in fade-in zoom-in-95`}
+                        >
+                          <button
+                            onClick={() => toggleTask(task.id, (task as any).isFromHistory)}
+                            className="flex-shrink-0 transition-transform active:scale-75 hover:scale-110"
+                          >
+                            <CheckCircle className={`w-6 h-6 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                          </button>
+
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium line-through ${textSecondaryClass}`}>
+                              {task.text}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </>
@@ -681,39 +733,93 @@ export default function App() {
           {darkMode ? t('footer.dark') : t('footer.light')}
         </div>
         <div className={`text-center ${textSecondaryClass} text-xs font-semibold opacity-75`}>
-          Created by Edgar Martínez Oliva • v1.7
+          Created by Edgar Martínez Oliva • v1.8.4
         </div>
       </div >
 
       {/* Schedule Modal */}
-      {
-        showScheduleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`${cardClass} w-full max-w-md rounded-2xl p-6 shadow-2xl border flex flex-col gap-6`}>
-              <div className="flex justify-between items-center">
-                <h3 className={`text-xl font-bold ${textClass}`}>{t('schedule.title')}</h3>
-                <button onClick={() => setShowScheduleModal(false)} className={textSecondaryClass}>
-                  <Plus className="w-6 h-6 rotate-45" />
-                </button>
-              </div>
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className={`${cardClass} w-full max-w-md rounded-3xl p-6 shadow-2xl border flex flex-col gap-6`}>
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-2">
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className={`text-lg font-medium ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'} transition`}
+              >
+                Cancel
+              </button>
+              <h3 className={`text-xl font-bold ${textClass}`}>Date</h3>
+              <button
+                onClick={() => addTask(true)}
+                className={`text-lg font-bold ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'} transition`}
+              >
+                Done
+              </button>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondaryClass} mb-2`}>{t('schedule.dateLabel')}</label>
+            {/* Quick Actions Grid */}
+            <div className={`${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'} rounded-2xl p-4 grid grid-cols-3 gap-2 border ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+              <button
+                onClick={() => setScheduleTaskDate(getLocalDateStr(1))}
+                className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all ${scheduleTaskDate === getLocalDateStr(1) ? (darkMode ? 'bg-slate-700 ring-2 ring-blue-500' : 'bg-white shadow-md ring-2 ring-blue-500') : (darkMode ? 'hover:bg-slate-800' : 'hover:bg-white/50')}`}
+              >
+                <Sun className={`w-7 h-7 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`} />
+                <span className={`text-xs font-semibold ${textSecondaryClass}`}>Tomorrow</span>
+              </button>
+              <button
+                onClick={() => setScheduleTaskDate(getLocalDateStr(7))}
+                className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all ${scheduleTaskDate === getLocalDateStr(7) ? (darkMode ? 'bg-slate-700 ring-2 ring-blue-500' : 'bg-white shadow-md ring-2 ring-blue-500') : (darkMode ? 'hover:bg-slate-800' : 'hover:bg-white/50')}`}
+              >
+                <SquareArrowRight className={`w-7 h-7 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`} />
+                <span className={`text-xs font-semibold ${textSecondaryClass}`}>Next Week</span>
+              </button>
+              <button
+                className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-white/50'}`}
+                onClick={() => {
+                  const input = document.getElementById('schedule-date-input') as any;
+                  if (input) {
+                    if (typeof input.showPicker === 'function') {
+                      input.showPicker();
+                    } else {
+                      input.focus();
+                    }
+                  }
+                }}
+              >
+                <Calendar className={`w-7 h-7 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`} />
+                <span className={`text-xs font-semibold ${textSecondaryClass}`}>Pick Date</span>
+              </button>
+            </div>
+
+            {/* Form Details */}
+            <div className="space-y-4">
+              <div className={`${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'} rounded-2xl p-4 space-y-3 border ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Calendar size={18} className={textSecondaryClass} />
+                    <span className={`text-sm font-semibold ${textClass}`}>Date</span>
+                  </div>
                   <input
+                    id="schedule-date-input"
                     type="date"
                     value={scheduleTaskDate}
                     onChange={(e) => setScheduleTaskDate(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
+                    className={`px-3 py-1 rounded-lg text-sm font-bold ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-800 shadow-sm'} outline-none focus:ring-2 ring-blue-500 border-none`}
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className={`block text-sm font-medium ${textSecondaryClass} mb-2`}>{t('schedule.repeatLabel')}</label>
+              <div className={`${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'} rounded-2xl p-4 space-y-3 border ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <RotateCcw size={18} className={textSecondaryClass} />
+                    <span className={`text-sm font-semibold ${textClass}`}>Repeat</span>
+                  </div>
                   <select
                     value={repeatRule}
                     onChange={(e) => setRepeatRule(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
+                    className={`px-3 py-1 rounded-lg text-sm font-bold ${darkMode ? 'bg-slate-800 text-slate-100' : 'bg-white text-slate-800 shadow-sm'} outline-none focus:ring-2 ring-blue-500 border-none appearance-none cursor-pointer`}
                   >
                     <option value="none">{t('schedule.none')}</option>
                     <option value="daily">{t('schedule.daily')}</option>
@@ -722,73 +828,16 @@ export default function App() {
                   </select>
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setShowScheduleModal(false)}
-                  className={`flex-1 px-4 py-3 rounded-xl font-semibold transition ${buttonSecondaryClass}`}
-                >
-                  {t('schedule.cancelBtn')}
-                </button>
-                <button
-                  onClick={() => addTask(true)}
-                  className={`flex-1 px-4 py-3 rounded-xl font-semibold text-white transition ${buttonPrimaryClass}`}
-                >
-                  {t('schedule.saveBtn')}
-                </button>
-              </div>
             </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
-      {/* History Modal */}
-      {
-        showHistory && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className={`${cardClass} w-full max-w-lg rounded-2xl p-6 shadow-2xl border flex flex-col gap-6 max-h-[80vh]`}>
-              <div className="flex justify-between items-center">
-                <h3 className={`text-xl font-bold ${textClass}`}>{t('history.title')}</h3>
-                <button onClick={() => setShowHistory(false)} className={textSecondaryClass}>
-                  <Plus className="w-6 h-6 rotate-45" />
-                </button>
-              </div>
 
-              <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
-                {completedHistory.length === 0 ? (
-                  <div className={`text-center py-12 ${textSecondaryClass}`}>
-                    <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p>{t('history.empty')}</p>
-                  </div>
-                ) : (
-                  completedHistory.map((item, idx) => (
-                    <div key={idx} className={`p-4 rounded-xl border-2 ${darkMode ? 'border-emerald-900/40 bg-emerald-900/10' : 'border-emerald-100 bg-emerald-50'} flex justify-between items-center`}>
-                      <div className="min-w-0 flex-1">
-                        <p className={`font-medium ${textClass}`}>{item.text}</p>
-                        <div className="flex items-center gap-3 mt-1 text-xs opacity-70">
-                          <span className="flex items-center gap-1"><Calendar size={12} /> {item.dueDate}</span>
-                        </div>
-                      </div>
-                      <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 ml-3" />
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowHistory(false)}
-                className={`w-full px-4 py-3 rounded-xl font-semibold transition ${buttonPrimaryClass} text-white`}
-              >
-                {t('history.backBtn')}
-              </button>
-            </div>
-          </div>
-        )
-      }
       {/* Edit Modal */}
       {editingTask && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-md w-full border flex flex-col gap-6`}>
+          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-md w-full border flex flex-col gap-6 animate-in zoom-in-95 duration-200`}>
             <h3 className={`text-2xl font-bold ${textClass}`}>{t('edit.title')}</h3>
 
             <div className="space-y-4">
@@ -850,7 +899,7 @@ export default function App() {
       {/* Calendar Modal */}
       {showCalendarModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-md w-full border`}>
+          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-md w-full border animate-in zoom-in-95 duration-200`}>
             <h3 className={`text-2xl font-bold ${textClass} mb-4`}>{t('calendar.title')}</h3>
             <p className={`${textSecondaryClass} mb-4`}>{selectedTaskForCalendar?.text}</p>
 
@@ -897,7 +946,7 @@ export default function App() {
       {/* Delete Confirmation Modal for Recurring Tasks */}
       {showDeleteModal && taskToDelete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-sm w-full border text-center`}>
+          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-sm w-full border text-center animate-in zoom-in-95 duration-200`}>
             <div className={`w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center ${darkMode ? 'bg-red-900/30' : 'bg-red-100'}`}>
               <Trash2 className="w-8 h-8 text-red-500" />
             </div>
@@ -924,46 +973,6 @@ export default function App() {
                 className={`w-full py-2 text-sm font-medium ${textSecondaryClass} hover:underline`}
               >
                 {t('menu.deleteConfirm.cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Focus Mode View */}
-      {focusMode && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className={`${cardClass} rounded-2xl shadow-2xl p-8 max-w-md w-full border`}>
-            <div className="text-center">
-              <div className={`w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center ${isBreak ? 'bg-emerald-900/50' : 'bg-blue-900/50'}`}>
-                {isBreak ? (
-                  <Coffee className="w-16 h-16 text-emerald-400" />
-                ) : (
-                  <Zap className="w-16 h-16 text-blue-400" />
-                )}
-              </div>
-              <h2 className={`text-3xl font-bold mb-2 ${textClass}`}>
-                {isBreak ? t('focus.distractions.breakTitle') : t('focus.distractions.activeTitle')}
-              </h2>
-              <p className={`${textSecondaryClass} mb-6`}>
-                {isBreak ? t('focus.distractions.breakSubtitle') : t('focus.distractions.activeSubtitle')}
-              </p>
-              <div className="text-6xl font-bold text-blue-400 mb-8 font-mono">
-                {formatTime(focusSeconds)}
-              </div>
-              {!isBreak && (
-                <button
-                  onClick={reportDistraction}
-                  className="mb-4 px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition w-full font-bold"
-                >
-                  {t('focus.distractions.reportBtn')}
-                </button>
-              )}
-              <button
-                onClick={stopFocusMode}
-                className={`px-6 py-3 ${buttonSecondaryClass} rounded-xl transition w-full font-bold`}
-              >
-                {t('focus.distractions.stopBtn')}
               </button>
             </div>
           </div>

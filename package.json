@@ -1,7 +1,7 @@
 {
   "name": "to-do-app",
   "private": true,
-  "version": "1.8.3",
+  "version": "1.8.4",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -47,8 +47,8 @@
     "vite": "^7.2.4"
   },
   "build": {
-    "appId": "com.timemanager.app",
-    "productName": "Time Manager",
+    "appId": "com.taskmanager.app",
+    "productName": "My Task Manager",
     "directories": {
       "output": "release"
     },
