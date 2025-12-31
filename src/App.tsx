@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight } from 'lucide-react';
 
 interface Task {
   id: number;
@@ -71,6 +71,7 @@ export default function App() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleTaskDate, setScheduleTaskDate] = useState('');
   const [repeatRule, setRepeatRule] = useState('none');
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -90,6 +91,7 @@ export default function App() {
   }, []);
 
   const [view, setView] = useState('tareas');
+  const [showUpcomingView, setShowUpcomingView] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark' | 'night'>('dark');
   const darkMode = theme === 'dark' || theme === 'night';
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -169,14 +171,52 @@ export default function App() {
     setCalendarTime(timeStr);
   }, []);
 
-  useEffect(() => {
+  // Helper functions for quick date selection
+  const getTomorrowDate = () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const year = tomorrow.getFullYear();
     const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
     const day = String(tomorrow.getDate()).padStart(2, '0');
-    setScheduleTaskDate(`${year}-${month}-${day}`);
-  }, []);
+    return `${year}-${month}-${day}`;
+  };
+
+  const getNextWeekDate = () => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const year = nextWeek.getFullYear();
+    const month = String(nextWeek.getMonth() + 1).padStart(2, '0');
+    const day = String(nextWeek.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const setTomorrow = () => {
+    setScheduleTaskDate(getTomorrowDate());
+  };
+
+  const setNextWeek = () => {
+    setScheduleTaskDate(getNextWeekDate());
+  };
+
+  const openDatePicker = () => {
+    // Focus the date input to open the calendar
+    setTimeout(() => {
+      if (dateInputRef.current) {
+        dateInputRef.current.focus();
+        // Try to show the native picker if available
+        if ('showPicker' in dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
+          dateInputRef.current.showPicker();
+        } else {
+          // Fallback: click the input to open calendar
+          dateInputRef.current.click();
+        }
+      }
+    }, 100);
+  };
+
+  const isTomorrow = (date: string) => date === getTomorrowDate();
+  const isNextWeek = (date: string) => date === getNextWeekDate();
+  const isCustomDate = (date: string) => date && !isTomorrow(date) && !isNextWeek(date);
 
 
 
@@ -215,6 +255,37 @@ export default function App() {
     else if (repeat === 'weekly') date.setDate(date.getDate() + 7);
     else if (repeat === 'monthly') date.setMonth(date.getMonth() + 1);
     return date.toISOString().split('T')[0];
+  };
+
+  // Check if a selected date matches a recurring task's schedule
+  // For recurring tasks, we check if the selected date is a valid occurrence based on the pattern
+  const isDateInRecurringSchedule = (taskDueDate: string, selectedDate: string, repeat: string): boolean => {
+    if (repeat === 'none') return false;
+    
+    const taskDate = new Date(taskDueDate + 'T12:00:00');
+    const checkDate = new Date(selectedDate + 'T12:00:00');
+    
+    // Selected date must be on or after the task's due date
+    if (checkDate < taskDate) return false;
+    
+    if (repeat === 'daily') {
+      // For daily, any date on or after the due date is valid
+      return true;
+    } else if (repeat === 'weekly') {
+      // For weekly, check if the selected date is exactly 7 days apart from the due date
+      const daysDiff = Math.floor((checkDate.getTime() - taskDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysDiff >= 0 && daysDiff % 7 === 0;
+    } else if (repeat === 'monthly') {
+      // For monthly, check if it's the same day of the month and on or after the due date
+      if (checkDate.getDate() !== taskDate.getDate()) return false;
+      
+      // Check if selected date is in the same or a future month/year
+      const monthsDiff = (checkDate.getFullYear() - taskDate.getFullYear()) * 12 + 
+                         (checkDate.getMonth() - taskDate.getMonth());
+      return monthsDiff >= 0;
+    }
+    
+    return false;
   };
 
   const toggleTask = (id: number, isHistory = false) => {
@@ -338,12 +409,85 @@ export default function App() {
 
   const todayStr = getLocalDateStr();
 
+  // Get all dates for the next 7 days (including today)
+  const getNext7Days = () => {
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      dates.push(getLocalDateStr(i));
+    }
+    return dates;
+  };
+
+  // Get upcoming tasks for the next 7 days
+  const getUpcomingTasks = () => {
+    const next7Days = getNext7Days();
+    const upcomingTasks: (Task & { displayDate?: string; isDailyRecurring?: boolean })[] = [];
+    const dailyRecurringTasks = new Map<number, Task>(); // Track daily recurring tasks to show only once
+
+    tasks.forEach(task => {
+      if (task.completed) return; // Only show pending tasks
+      
+      // Include overdue tasks
+      if (task.dueDate < todayStr) {
+        upcomingTasks.push({ ...task, displayDate: task.dueDate });
+        return;
+      }
+
+      // Check if task falls within next 7 days
+      if (next7Days.includes(task.dueDate)) {
+        // For daily recurring tasks, only add once
+        if (task.repeat === 'daily') {
+          if (!dailyRecurringTasks.has(task.id)) {
+            dailyRecurringTasks.set(task.id, task);
+            upcomingTasks.push({ ...task, displayDate: task.dueDate, isDailyRecurring: true });
+          }
+        } else {
+          upcomingTasks.push({ ...task, displayDate: task.dueDate });
+        }
+      }
+
+      // Check recurring tasks
+      if (task.repeat !== 'none') {
+        next7Days.forEach(date => {
+          if (isDateInRecurringSchedule(task.dueDate, date, task.repeat)) {
+            // For daily recurring tasks, we already handled them above
+            if (task.repeat === 'daily') {
+              return;
+            }
+            // For weekly/monthly, add if not already added for this date
+            const alreadyAdded = upcomingTasks.some(t => t.id === task.id && t.displayDate === date);
+            if (!alreadyAdded) {
+              upcomingTasks.push({ ...task, displayDate: date });
+            }
+          }
+        });
+      }
+    });
+
+    // Sort by date, then by id
+    return upcomingTasks.sort((a, b) => {
+      const dateCompare = (a.displayDate || a.dueDate).localeCompare(b.displayDate || b.dueDate);
+      if (dateCompare !== 0) return dateCompare;
+      return b.id - a.id;
+    });
+  };
+
   // 1. Get recurring/scheduled tasks for the selected date PLUS past pending tasks if today
   const baseTasks = tasks.filter(task => {
-    if (selectedDate === todayStr) {
-      return task.dueDate === selectedDate || (task.dueDate < todayStr && !task.completed);
+    // Check if it's an exact date match
+    if (task.dueDate === selectedDate) return true;
+    
+    // Check if it's a recurring task that matches the selected date
+    if (task.repeat !== 'none' && isDateInRecurringSchedule(task.dueDate, selectedDate, task.repeat)) {
+      return true;
     }
-    return task.dueDate === selectedDate;
+    
+    // For today's view, also show overdue tasks
+    if (selectedDate === todayStr && task.dueDate < todayStr && !task.completed) {
+      return true;
+    }
+    
+    return false;
   });
 
   // 2. Get history entries completed today locally
@@ -568,11 +712,14 @@ export default function App() {
             {view === 'tareas' && (
               <>
                 {/* Date Selector */}
-                <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 scrollbar-hide">
                   <input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setShowUpcomingView(false);
+                    }}
                     className={`px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm`}
                   />
                   <button
@@ -582,8 +729,9 @@ export default function App() {
                       const month = String(d.getMonth() + 1).padStart(2, '0');
                       const day = String(d.getDate()).padStart(2, '0');
                       setSelectedDate(`${year}-${month}-${day}`);
+                      setShowUpcomingView(false);
                     }}
-                    className={`h-[46px] px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${selectedDate === (() => {
+                    className={`h-[46px] px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${!showUpcomingView && selectedDate === (() => {
                       const d = new Date();
                       const year = d.getFullYear();
                       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -595,6 +743,17 @@ export default function App() {
                       }`}
                   >
                     {t('calendar.todayTasks') || 'Today tasks'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUpcomingView(!showUpcomingView);
+                    }}
+                    className={`h-[46px] px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${showUpcomingView
+                      ? `${accentColor} shadow-lg`
+                      : `${theme === 'night' ? 'bg-[#251e1a] text-[#a18a7d] border-[#382b24]' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'} hover:border-zinc-700 hover:text-white`
+                      }`}
+                  >
+                    {t('calendar.upcomingTasks') || 'Upcoming tasks'}
                   </button>
                 </div>
                 <div className={`${theme === 'night' ? 'bg-[#251e1a] border-[#382b24]' : (darkMode ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200')} border rounded-2xl p-6 mb-8 shadow-sm transition-all`}>
@@ -634,7 +793,106 @@ export default function App() {
                 <div className="space-y-8">
                   {/* Active Tasks Section */}
                   <div className="space-y-3">
-                    {sortedTasks.filter(t => !t.completed).length === 0 && selectedDate === todayStr ? (
+                    {showUpcomingView ? (
+                      // Upcoming Tasks View (next 7 days)
+                      (() => {
+                        const upcomingTasks = getUpcomingTasks();
+                        if (upcomingTasks.length === 0) {
+                          return (
+                            <div className={`text-center py-8 ${textSecondaryClass}`}>
+                              <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-30 text-emerald-500" />
+                              <p className="font-medium">No upcoming tasks in the next 7 days!</p>
+                            </div>
+                          );
+                        }
+                        return upcomingTasks.map((task: any) => (
+                          <div
+                            key={`${task.id}-${task.displayDate || task.dueDate}`}
+                            className={`flex items-center gap-4 p-5 rounded-2xl border border-zinc-900 transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
+                          >
+                            <button
+                              onClick={() => toggleTask(task.id)}
+                              className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110"
+                            >
+                              <Circle className={`w-6 h-6 ${darkMode ? 'text-zinc-700' : 'text-zinc-300'}`} strokeWidth={iconStrokeWidth} />
+                            </button>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className={`font-medium ${textClass}`}>{task.text}</p>
+                                {task.isDailyRecurring && (
+                                  <span
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/20' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}
+                                    title="Daily recurring task"
+                                  >
+                                    Daily
+                                  </span>
+                                )}
+                                {task.repeat === 'weekly' && (
+                                  <span
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-800 border border-blue-300'}`}
+                                    title="Weekly recurring task"
+                                  >
+                                    Weekly
+                                  </span>
+                                )}
+                                {task.repeat === 'monthly' && (
+                                  <span
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-100 text-purple-800 border border-purple-300'}`}
+                                    title="Monthly recurring task"
+                                  >
+                                    Monthly
+                                  </span>
+                                )}
+                                {task.displayDate && task.displayDate < todayStr && (
+                                  <span
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#D9FF00]/10 text-[#D9FF00] border border-[#D9FF00]/20' : 'bg-black text-white'}`}
+                                    title={`Scheduled for ${task.displayDate}`}
+                                  >
+                                    Due
+                                  </span>
+                                )}
+                                {task.displayDate && task.displayDate >= todayStr && (
+                                  <span
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                                  >
+                                    {task.displayDate === todayStr 
+                                      ? 'Today' 
+                                      : isTomorrow(task.displayDate) 
+                                        ? 'Tomorrow' 
+                                        : task.displayDate}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-1.5">
+                              <button
+                                onClick={() => openEditModal(task)}
+                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                                title={t('tasks.editTooltip')}
+                              >
+                                <Edit2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                              </button>
+                              <button
+                                onClick={() => openCalendarModal(task)}
+                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                                title={t('tasks.calendarTooltip')}
+                              >
+                                <Calendar className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                              </button>
+                              <button
+                                onClick={() => confirmDelete(task)}
+                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-rose-500 hover:bg-zinc-800' : 'text-zinc-400 hover:text-rose-600 hover:bg-zinc-100'} rounded-full transition-all`}
+                                title={t('tasks.deleteTooltip')}
+                              >
+                                <Trash2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                              </button>
+                            </div>
+                          </div>
+                        ));
+                      })()
+                    ) : sortedTasks.filter(t => !t.completed).length === 0 && selectedDate === todayStr ? (
                       <div className={`text-center py-8 ${textSecondaryClass}`}>
                         <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-30 text-emerald-500" />
                         <p className="font-medium">All active tasks completed!</p>
@@ -660,6 +918,27 @@ export default function App() {
                                 title={`Scheduled for ${task.dueDate}`}
                               >
                                 Due
+                              </span>
+                            )}
+                            {task.dueDate === todayStr && (
+                              <span
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                              >
+                                Today
+                              </span>
+                            )}
+                            {task.dueDate > todayStr && isTomorrow(task.dueDate) && (
+                              <span
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                              >
+                                Tomorrow
+                              </span>
+                            )}
+                            {task.dueDate > todayStr && !isTomorrow(task.dueDate) && (
+                              <span
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                              >
+                                {task.dueDate}
                               </span>
                             )}
                           </div>
@@ -792,9 +1071,50 @@ export default function App() {
               </div>
 
               <div className="space-y-8">
+                {/* Quick Date Selection Buttons */}
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 px-1">{t('schedule.dateLabel')}</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={setTomorrow}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
+                        scheduleTaskDate && isTomorrow(scheduleTaskDate)
+                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                      }`}
+                    >
+                      <Sun className="w-6 h-6" strokeWidth={2} />
+                      <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.tomorrow')}</span>
+                    </button>
+                    <button
+                      onClick={setNextWeek}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
+                        scheduleTaskDate && isNextWeek(scheduleTaskDate)
+                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                      }`}
+                    >
+                      <ArrowRight className="w-6 h-6" strokeWidth={2} />
+                      <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.nextWeek')}</span>
+                    </button>
+                    <button
+                      onClick={openDatePicker}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
+                        isCustomDate(scheduleTaskDate)
+                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                      }`}
+                    >
+                      <Calendar className="w-6 h-6" strokeWidth={2} />
+                      <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.pickDate')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Date Input */}
+                <div className="space-y-3">
                   <input
+                    ref={dateInputRef}
                     type="date"
                     value={scheduleTaskDate}
                     onChange={(e) => setScheduleTaskDate(e.target.value)}

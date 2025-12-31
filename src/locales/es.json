@@ -66,7 +66,10 @@
         "weekly": "Semanal",
         "monthly": "Mensual",
         "saveBtn": "Programar",
-        "cancelBtn": "Cancelar"
+        "cancelBtn": "Cancelar",
+        "tomorrow": "Mañana",
+        "nextWeek": "Próxima Semana",
+        "pickDate": "Elegir Fecha"
     },
     "history": {
         "title": "Tareas Completadas",
@@ -84,6 +87,7 @@
     "calendar": {
         "title": "Agregar a Google Calendar",
         "todayTasks": "Tareas de hoy",
+        "upcomingTasks": "Tareas próximas",
         "dateLabel": "Fecha",
         "timeLabel": "Hora",
         "addBtn": "Agregar a Calendar",

@@ -66,7 +66,10 @@
         "weekly": "Weekly",
         "monthly": "Monthly",
         "saveBtn": "Schedule",
-        "cancelBtn": "Cancel"
+        "cancelBtn": "Cancel",
+        "tomorrow": "Tomorrow",
+        "nextWeek": "Next Week",
+        "pickDate": "Pick Date"
     },
     "history": {
         "title": "Completed Tasks",
@@ -84,6 +87,7 @@
     "calendar": {
         "title": "Add to Google Calendar",
         "todayTasks": "Today tasks",
+        "upcomingTasks": "Upcoming tasks",
         "dateLabel": "Date",
         "timeLabel": "Time",
         "addBtn": "Add to Calendar",
