@@ -2,6 +2,8 @@
   "name": "to-do-app",
   "private": true,
   "version": "1.8.4",
+  "description": "My professional Task Manager app",
+  "author": "Edgar Martinez Oliva",
   "type": "module",
   "main": "dist-electron/main.cjs",
   "scripts": {
@@ -58,7 +60,8 @@
     ],
     "mac": {
       "target": "dir",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "icon": "build/Mylogo-main.icns"
     }
   }
 }
