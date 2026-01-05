@@ -92,7 +92,7 @@ export default function App() {
 
   const [view, setView] = useState('tareas');
   const [showUpcomingView, setShowUpcomingView] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'night'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'night'>('light');
   const darkMode = theme === 'dark' || theme === 'night';
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedTaskForCalendar, setSelectedTaskForCalendar] = useState<Task | null>(null);
@@ -261,13 +261,13 @@ export default function App() {
   // For recurring tasks, we check if the selected date is a valid occurrence based on the pattern
   const isDateInRecurringSchedule = (taskDueDate: string, selectedDate: string, repeat: string): boolean => {
     if (repeat === 'none') return false;
-    
+
     const taskDate = new Date(taskDueDate + 'T12:00:00');
     const checkDate = new Date(selectedDate + 'T12:00:00');
-    
+
     // Selected date must be on or after the task's due date
     if (checkDate < taskDate) return false;
-    
+
     if (repeat === 'daily') {
       // For daily, any date on or after the due date is valid
       return true;
@@ -278,13 +278,13 @@ export default function App() {
     } else if (repeat === 'monthly') {
       // For monthly, check if it's the same day of the month and on or after the due date
       if (checkDate.getDate() !== taskDate.getDate()) return false;
-      
+
       // Check if selected date is in the same or a future month/year
-      const monthsDiff = (checkDate.getFullYear() - taskDate.getFullYear()) * 12 + 
-                         (checkDate.getMonth() - taskDate.getMonth());
+      const monthsDiff = (checkDate.getFullYear() - taskDate.getFullYear()) * 12 +
+        (checkDate.getMonth() - taskDate.getMonth());
       return monthsDiff >= 0;
     }
-    
+
     return false;
   };
 
@@ -426,7 +426,7 @@ export default function App() {
 
     tasks.forEach(task => {
       if (task.completed) return; // Only show pending tasks
-      
+
       // Include overdue tasks
       if (task.dueDate < todayStr) {
         upcomingTasks.push({ ...task, displayDate: task.dueDate });
@@ -476,17 +476,17 @@ export default function App() {
   const baseTasks = tasks.filter(task => {
     // Check if it's an exact date match
     if (task.dueDate === selectedDate) return true;
-    
+
     // Check if it's a recurring task that matches the selected date
     if (task.repeat !== 'none' && isDateInRecurringSchedule(task.dueDate, selectedDate, task.repeat)) {
       return true;
     }
-    
+
     // For today's view, also show overdue tasks
     if (selectedDate === todayStr && task.dueDate < todayStr && !task.completed) {
       return true;
     }
-    
+
     return false;
   });
 
@@ -542,7 +542,7 @@ export default function App() {
         <div className="max-w-4xl mx-auto">
 
           <div className={`${cardClass} rounded-2xl shadow-xl p-6 mb-6 border`}>
-            <div className="flex items-center justify-between mb-8 relative">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 relative gap-4 md:gap-0">
               <div className="flex items-center gap-3">
                 <h1 className={`text-4xl font-extrabold tracking-tight ${textClass}`}>{t('appTitle')}</h1>
               </div>
@@ -712,15 +712,22 @@ export default function App() {
             {view === 'tareas' && (
               <>
                 {/* Date Selector */}
-                <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-4 pt-2 scrollbar-hide">
+                <div className="flex items-center gap-2 md:gap-3 mb-6 overflow-x-auto pb-4 pt-2 scrollbar-hide">
+                  <button
+                    onClick={openDatePicker}
+                    className={`md:hidden p-3 rounded-xl border-2 ${inputClass} flex items-center justify-center transition-all shadow-sm active:scale-95`}
+                  >
+                    <Calendar className="w-5 h-5" strokeWidth={iconStrokeWidth} />
+                  </button>
                   <input
+                    ref={dateInputRef}
                     type="date"
                     value={selectedDate}
                     onChange={(e) => {
                       setSelectedDate(e.target.value);
                       setShowUpcomingView(false);
                     }}
-                    className={`px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm`}
+                    className={`px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm absolute opacity-0 w-0 h-0 pointer-events-none md:static md:opacity-100 md:w-auto md:h-auto md:pointer-events-auto`}
                   />
                   <button
                     onClick={() => {
@@ -856,10 +863,10 @@ export default function App() {
                                   <span
                                     className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
                                   >
-                                    {task.displayDate === todayStr 
-                                      ? 'Today' 
-                                      : isTomorrow(task.displayDate) 
-                                        ? 'Tomorrow' 
+                                    {task.displayDate === todayStr
+                                      ? 'Today'
+                                      : isTomorrow(task.displayDate)
+                                        ? 'Tomorrow'
                                         : task.displayDate}
                                   </span>
                                 )}
@@ -1077,33 +1084,30 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={setTomorrow}
-                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
-                        scheduleTaskDate && isTomorrow(scheduleTaskDate)
-                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
-                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${scheduleTaskDate && isTomorrow(scheduleTaskDate)
+                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                        : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                        }`}
                     >
                       <Sun className="w-6 h-6" strokeWidth={2} />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.tomorrow')}</span>
                     </button>
                     <button
                       onClick={setNextWeek}
-                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
-                        scheduleTaskDate && isNextWeek(scheduleTaskDate)
-                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
-                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${scheduleTaskDate && isNextWeek(scheduleTaskDate)
+                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                        : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                        }`}
                     >
                       <ArrowRight className="w-6 h-6" strokeWidth={2} />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.nextWeek')}</span>
                     </button>
                     <button
                       onClick={openDatePicker}
-                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${
-                        isCustomDate(scheduleTaskDate)
-                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
-                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${isCustomDate(scheduleTaskDate)
+                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                        : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                        }`}
                     >
                       <Calendar className="w-6 h-6" strokeWidth={2} />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.pickDate')}</span>
