@@ -583,7 +583,7 @@ export default function App() {
                         </button>
 
                         <h3 className={`text-sm font-bold opacity-70 mb-1 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                          My Task Manager v1.8.5
+                          My Task Manager v1.8.9
                         </h3>
                         <div className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}></div>
 
@@ -738,7 +738,7 @@ export default function App() {
                       setSelectedDate(`${year}-${month}-${day}`);
                       setShowUpcomingView(false);
                     }}
-                    className={`h-[46px] px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${!showUpcomingView && selectedDate === (() => {
+                    className={`h-[46px] px-3 md:px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center flex-1 md:flex-none ${!showUpcomingView && selectedDate === (() => {
                       const d = new Date();
                       const year = d.getFullYear();
                       const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -749,18 +749,20 @@ export default function App() {
                       : `${theme === 'night' ? 'bg-[#251e1a] text-[#a18a7d] border-[#382b24]' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'} hover:border-zinc-700 hover:text-white`
                       }`}
                   >
-                    {t('calendar.todayTasks') || 'Today tasks'}
+                    <span className="md:hidden">Today</span>
+                    <span className="hidden md:inline">{t('calendar.todayTasks') || 'Today tasks'}</span>
                   </button>
                   <button
                     onClick={() => {
                       setShowUpcomingView(!showUpcomingView);
                     }}
-                    className={`h-[46px] px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center ${showUpcomingView
+                    className={`h-[46px] px-3 md:px-6 rounded-full text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm hover:scale-105 active:scale-95 flex items-center justify-center flex-1 md:flex-none ${showUpcomingView
                       ? `${accentColor} shadow-lg`
                       : `${theme === 'night' ? 'bg-[#251e1a] text-[#a18a7d] border-[#382b24]' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'} hover:border-zinc-700 hover:text-white`
                       }`}
                   >
-                    {t('calendar.upcomingTasks') || 'Upcoming tasks'}
+                    <span className="md:hidden">Upcoming</span>
+                    <span className="hidden md:inline">{t('calendar.upcomingTasks') || 'Upcoming tasks'}</span>
                   </button>
                 </div>
                 <div className={`${theme === 'night' ? 'bg-[#251e1a] border-[#382b24]' : (darkMode ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200')} border rounded-2xl p-6 mb-8 shadow-sm transition-all`}>
