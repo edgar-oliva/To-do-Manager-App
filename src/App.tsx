@@ -71,7 +71,7 @@ export default function App() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [scheduleTaskDate, setScheduleTaskDate] = useState('');
   const [repeatRule, setRepeatRule] = useState('none');
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const scheduleDateInputRef = useRef<HTMLInputElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -198,17 +198,17 @@ export default function App() {
     setScheduleTaskDate(getNextWeekDate());
   };
 
-  const openDatePicker = () => {
+  const openScheduleDatePicker = () => {
     // Focus the date input to open the calendar
     setTimeout(() => {
-      if (dateInputRef.current) {
-        dateInputRef.current.focus();
+      if (scheduleDateInputRef.current) {
+        scheduleDateInputRef.current.focus();
         // Try to show the native picker if available
-        if ('showPicker' in dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
-          dateInputRef.current.showPicker();
+        if ('showPicker' in scheduleDateInputRef.current && typeof scheduleDateInputRef.current.showPicker === 'function') {
+          scheduleDateInputRef.current.showPicker();
         } else {
           // Fallback: click the input to open calendar
-          dateInputRef.current.click();
+          scheduleDateInputRef.current.click();
         }
       }
     }, 100);
@@ -713,21 +713,30 @@ export default function App() {
               <>
                 {/* Date Selector */}
                 <div className="flex items-center gap-2 md:gap-3 mb-6 overflow-x-auto pb-4 pt-2 scrollbar-hide">
-                  <button
-                    onClick={openDatePicker}
-                    className={`md:hidden p-3 rounded-xl border-2 ${inputClass} flex items-center justify-center transition-all shadow-sm active:scale-95`}
-                  >
-                    <Calendar className="w-5 h-5" strokeWidth={iconStrokeWidth} />
-                  </button>
+                  <div className="relative md:hidden">
+                    <button
+                      className={`p-3 rounded-xl border-2 ${inputClass} flex items-center justify-center transition-all shadow-sm active:scale-95`}
+                    >
+                      <Calendar className="w-5 h-5" strokeWidth={iconStrokeWidth} />
+                    </button>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
+                        setShowUpcomingView(false);
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 z-10"
+                    />
+                  </div>
                   <input
-                    ref={dateInputRef}
                     type="date"
                     value={selectedDate}
                     onChange={(e) => {
                       setSelectedDate(e.target.value);
                       setShowUpcomingView(false);
                     }}
-                    className={`px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm absolute opacity-0 w-0 h-0 pointer-events-none md:static md:opacity-100 md:w-auto md:h-auto md:pointer-events-auto`}
+                    className={`hidden md:block px-4 py-2 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none transition-all shadow-sm`}
                   />
                   <button
                     onClick={() => {
@@ -817,45 +826,22 @@ export default function App() {
                         return upcomingTasks.map((task: any) => (
                           <div
                             key={`${task.id}-${task.displayDate || task.dueDate}`}
-                            className={`flex items-center gap-4 p-5 rounded-2xl border border-zinc-900 transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
+                            className={`flex items-start gap-4 p-5 rounded-2xl border border-zinc-900 transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
                           >
                             <button
                               onClick={() => toggleTask(task.id)}
-                              className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110"
+                              className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110 mt-0.25"
                             >
                               <Circle className={`w-6 h-6 ${darkMode ? 'text-zinc-700' : 'text-zinc-300'}`} strokeWidth={iconStrokeWidth} />
                             </button>
 
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className={`font-medium ${textClass}`}>{task.text}</p>
-                                {task.isDailyRecurring && (
-                                  <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/20' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}
-                                    title="Daily recurring task"
-                                  >
-                                    Daily
-                                  </span>
-                                )}
-                                {task.repeat === 'weekly' && (
-                                  <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-800 border border-blue-300'}`}
-                                    title="Weekly recurring task"
-                                  >
-                                    Weekly
-                                  </span>
-                                )}
-                                {task.repeat === 'monthly' && (
-                                  <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-100 text-purple-800 border border-purple-300'}`}
-                                    title="Monthly recurring task"
-                                  >
-                                    Monthly
-                                  </span>
-                                )}
+                              <p className={`font-medium ${textClass} break-words pr-2`}>{task.text}</p>
+
+                              <div className="flex flex-wrap gap-2 mt-1.5 items-center">
                                 {task.displayDate && task.displayDate < todayStr && (
                                   <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#D9FF00]/10 text-[#D9FF00] border border-[#D9FF00]/20' : 'bg-black text-white'}`}
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'bg-[#D9FF00]/10 text-[#D9FF00] border border-[#D9FF00]/20' : 'bg-black text-white'}`}
                                     title={`Scheduled for ${task.displayDate}`}
                                   >
                                     Due
@@ -863,7 +849,7 @@ export default function App() {
                                 )}
                                 {task.displayDate && task.displayDate >= todayStr && (
                                   <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
                                   >
                                     {task.displayDate === todayStr
                                       ? 'Today'
@@ -872,10 +858,39 @@ export default function App() {
                                         : task.displayDate}
                                   </span>
                                 )}
+
+                                {(task.isDailyRecurring || task.repeat === 'weekly' || task.repeat === 'monthly') && (
+                                  <>
+                                    {task.isDailyRecurring && (
+                                      <span
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/20' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}
+                                        title="Daily recurring task"
+                                      >
+                                        Daily
+                                      </span>
+                                    )}
+                                    {task.repeat === 'weekly' && (
+                                      <span
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-800 border border-blue-300'}`}
+                                        title="Weekly recurring task"
+                                      >
+                                        Weekly
+                                      </span>
+                                    )}
+                                    {task.repeat === 'monthly' && (
+                                      <span
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-100 text-purple-800 border border-purple-300'}`}
+                                        title="Monthly recurring task"
+                                      >
+                                        Monthly
+                                      </span>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </div>
 
-                            <div className="flex gap-1.5">
+                            <div className="flex gap-1.5 mt-0.5">
                               <button
                                 onClick={() => openEditModal(task)}
                                 className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
@@ -1104,27 +1119,34 @@ export default function App() {
                       <ArrowRight className="w-6 h-6" strokeWidth={2} />
                       <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.nextWeek')}</span>
                     </button>
-                    <button
-                      onClick={openDatePicker}
-                      className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${isCustomDate(scheduleTaskDate)
-                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
-                        : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
-                        }`}
-                    >
-                      <Calendar className="w-6 h-6" strokeWidth={2} />
-                      <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.pickDate')}</span>
-                    </button>
+                    <div className="relative">
+                      <button
+                        className={`w-full h-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${isCustomDate(scheduleTaskDate)
+                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                          : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
+                          }`}
+                      >
+                        <Calendar className="w-6 h-6" strokeWidth={2} />
+                        <span className="text-xs font-bold uppercase tracking-wider">{t('schedule.pickDate')}</span>
+                      </button>
+                      <input
+                        type="date"
+                        value={scheduleTaskDate}
+                        onChange={(e) => setScheduleTaskDate(e.target.value)}
+                        className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Date Input */}
                 <div className="space-y-3">
                   <input
-                    ref={dateInputRef}
+                    ref={scheduleDateInputRef}
                     type="date"
                     value={scheduleTaskDate}
                     onChange={(e) => setScheduleTaskDate(e.target.value)}
-                    className={`w-full px-6 py-5 rounded-2xl border-2 ${inputClass} focus:border-[#FFD700] outline-none transition-all font-bold text-lg`}
+                    className={`w-full px-4 py-5 rounded-2xl border-2 ${inputClass} focus:border-[#FFD700] outline-none transition-all font-bold text-lg max-w-[95%] mx-auto block box-border`}
                   />
                 </div>
 
@@ -1133,25 +1155,25 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setRepeatRule('none')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'none' ? 'border-[#FFD700] bg-[#FFD700]/10 text-white' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'none' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.none')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('daily')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'daily' ? 'border-[#FFD700] bg-[#FFD700]/10 text-white' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'daily' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.daily')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('weekly')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'weekly' ? 'border-[#FFD700] bg-[#FFD700]/10 text-white' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'weekly' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.weekly')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('monthly')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'monthly' ? 'border-[#FFD700] bg-[#FFD700]/10 text-white' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'monthly' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.monthly')}
                     </button>
