@@ -1220,7 +1220,7 @@ export default function App() {
                       type="date"
                       value={editTaskDate}
                       onChange={(e) => setEditTaskDate(e.target.value)}
-                      className={`w-full max-w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
+                      className={`w-full max-w-full px-5 py-4 rounded-2xl border-2 appearance-none ${inputClass} focus:border-blue-500 outline-none`}
                     />
                   </div>
                   <div className="min-w-0">
@@ -1228,7 +1228,7 @@ export default function App() {
                     <select
                       value={editTaskRepeat}
                       onChange={(e) => setEditTaskRepeat(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
+                      className={`w-full px-5 py-4 rounded-2xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
                     >
                       <option value="none">{t('schedule.none')}</option>
                       <option value="daily">{t('schedule.daily')}</option>
