@@ -198,21 +198,7 @@ export default function App() {
     setScheduleTaskDate(getNextWeekDate());
   };
 
-  const openScheduleDatePicker = () => {
-    // Focus the date input to open the calendar
-    setTimeout(() => {
-      if (scheduleDateInputRef.current) {
-        scheduleDateInputRef.current.focus();
-        // Try to show the native picker if available
-        if ('showPicker' in scheduleDateInputRef.current && typeof scheduleDateInputRef.current.showPicker === 'function') {
-          scheduleDateInputRef.current.showPicker();
-        } else {
-          // Fallback: click the input to open calendar
-          scheduleDateInputRef.current.click();
-        }
-      }
-    }, 100);
-  };
+
 
   const isTomorrow = (date: string) => date === getTomorrowDate();
   const isNextWeek = (date: string) => date === getNextWeekDate();
