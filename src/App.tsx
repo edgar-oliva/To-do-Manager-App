@@ -1213,7 +1213,7 @@ export default function App() {
                   />
                 </div>
 
-                <div className="grid grid-cols-[1fr_1.5fr] gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-sm font-medium ${textSecondaryClass} mb-2`}>{t('edit.dateLabel')}</label>
                     <input
