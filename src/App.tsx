@@ -1214,16 +1214,16 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <label className={`block text-sm font-medium ${textSecondaryClass} mb-2`}>{t('edit.dateLabel')}</label>
                     <input
                       type="date"
                       value={editTaskDate}
                       onChange={(e) => setEditTaskDate(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
+                      className={`w-full max-w-full px-4 py-3 rounded-xl border-2 ${inputClass} focus:border-blue-500 outline-none`}
                     />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <label className={`block text-sm font-medium ${textSecondaryClass} mb-2`}>{t('edit.repeatLabel')}</label>
                     <select
                       value={editTaskRepeat}
