@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-    --color-gold-lime: linear-gradient(to right, #FFD700, #D9FF00);
+    --color-gold-lime: linear-gradient(to right, #6B7280, #374151);
 }
 
 :root {
@@ -20,15 +20,15 @@
 }
 
 .bg-gold-lime {
-    background: linear-gradient(90deg, #FFD700 0%, #D9FF00 100%);
+    background: linear-gradient(90deg, #6B7280 0%, #374151 100%);
 }
 
 .bg-night-light {
-    background: #FF7043;
+    background: linear-gradient(135deg, #DC2626 0%, #7F1D1D 100%);
 }
 
 .text-gold-lime {
-    background: linear-gradient(90deg, #FFD700 0%, #D9FF00 100%);
+    background: linear-gradient(90deg, #6B7280 0%, #374151 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }

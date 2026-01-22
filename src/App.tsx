@@ -517,7 +517,7 @@ export default function App() {
   const textSecondaryClass = theme === 'night' ? 'text-[#a18a7d]' : (darkMode ? 'text-zinc-500' : 'text-zinc-400');
   const inputClass = theme === 'night' ? 'bg-transparent border-[#4a3a30] text-[#fdf5e6] placeholder-[#5d4a40]' : (darkMode ? 'bg-transparent border-zinc-800 text-white placeholder-zinc-700' : 'bg-white border-zinc-200 text-black placeholder-zinc-400');
 
-  const accentColor = theme === 'night' ? 'bg-[#FF7043] text-black shadow-[0_0_20px_rgba(255,112,67,0.15)]' : 'bg-gold-lime text-black shadow-[0_0_20px_rgba(255,215,0,0.15)]';
+  const accentColor = theme === 'night' ? 'bg-night-light text-white shadow-[0_0_20px_rgba(220,38,38,0.25)]' : 'bg-gold-lime text-white shadow-[0_0_20px_rgba(107,114,128,0.2)]';
   const buttonPrimaryClass = `${accentColor} hover:opacity-90`;
   const buttonSecondaryClass = theme === 'night' ? 'bg-[#251e1a] border border-[#382b24] text-[#fdf5e6] hover:border-[#5d4a40]' : (darkMode ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700' : 'bg-white border border-zinc-200 text-zinc-800');
   const iconStrokeWidth = 2.5;
@@ -583,7 +583,7 @@ export default function App() {
                             <Moon className="w-4 h-4" strokeWidth={iconStrokeWidth} />
                             <span>Dark</span>
                           </div>
-                          {theme === 'dark' && <Check className="w-4 h-4 text-[#FFD700]" strokeWidth={iconStrokeWidth} />}
+                          {theme === 'dark' && <Check className="w-4 h-4 text-[#6B7280]" strokeWidth={iconStrokeWidth} />}
                         </button>
                         <button
                           onClick={() => { setTheme('light'); if (window.electronAPI) window.electronAPI.saveData('darkMode', 'light'); }}
@@ -600,10 +600,10 @@ export default function App() {
                           className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${theme === 'night' ? (darkMode ? 'bg-zinc-900/60' : 'bg-zinc-100') : (darkMode ? 'hover:bg-zinc-900/40' : 'hover:bg-zinc-50')} ${textClass}`}
                         >
                           <div className="flex items-center gap-3">
-                            <Eye className="w-4 h-4 text-[#FF5252]" strokeWidth={iconStrokeWidth} />
+                            <Eye className="w-4 h-4 text-[#EF4444]" strokeWidth={iconStrokeWidth} />
                             <span>Night Light</span>
                           </div>
-                          {theme === 'night' && <Check className="w-4 h-4 text-[#FF5252]" strokeWidth={iconStrokeWidth} />}
+                          {theme === 'night' && <Check className="w-4 h-4 text-[#EF4444]" strokeWidth={iconStrokeWidth} />}
                         </button>
 
                         <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
@@ -615,7 +615,7 @@ export default function App() {
                           className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${darkMode ? 'hover:bg-zinc-900' : 'hover:bg-zinc-50'} ${textClass}`}
                         >
                           <span>English</span>
-                          {i18n.language === 'en' && <Check className={`w-4 h-4 ${theme === 'night' ? 'text-[#FF7043]' : 'text-[#FFD700]'}`} strokeWidth={iconStrokeWidth} />}
+                          {i18n.language === 'en' && <Check className={`w-4 h-4 ${theme === 'night' ? 'text-[#DC2626]' : 'text-[#6B7280]'}`} strokeWidth={iconStrokeWidth} />}
                         </button>
                         <button
                           onClick={() => changeLanguage('es')}
@@ -645,7 +645,7 @@ export default function App() {
             {view === 'history' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center gap-3 mb-2">
-                  <BadgeCheck className={`w-6 h-6 ${theme === 'night' ? 'text-[#FF5252]' : (darkMode ? 'text-[#D9FF00]' : 'text-[#FFD700]')}`} strokeWidth={iconStrokeWidth} />
+                  <BadgeCheck className={`w-6 h-6 ${theme === 'night' ? 'text-[#EF4444]' : (darkMode ? 'text-[#374151]' : 'text-[#6B7280]')}`} strokeWidth={iconStrokeWidth} />
                   <h2 className={`text-2xl font-bold ${textClass}`}>Completed Tasks</h2>
                 </div>
 
@@ -769,7 +769,7 @@ export default function App() {
                       onKeyPress={(e) => e.key === 'Enter' && addTask(false)}
                       maxLength={300}
                       placeholder={t('tasks.placeholder')}
-                      className={`w-full px-5 py-4 rounded-2xl border ${inputClass} ${theme === 'night' ? 'focus:border-[#FF7043]' : (darkMode ? 'focus:border-[#D9FF00]' : 'focus:border-black')} outline-none transition-all font-medium`}
+                      className={`w-full px-5 py-4 rounded-2xl border ${inputClass} ${theme === 'night' ? 'focus:border-[#DC2626]' : (darkMode ? 'focus:border-[#374151]' : 'focus:border-black')} outline-none transition-all font-medium`}
                     />
                     <div className="flex gap-2">
                       <button
@@ -827,7 +827,7 @@ export default function App() {
                               <div className="flex flex-wrap gap-2 mt-1.5 items-center">
                                 {task.displayDate && task.displayDate < todayStr && (
                                   <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'bg-[#D9FF00]/10 text-[#D9FF00] border border-[#D9FF00]/20' : 'bg-black text-white'}`}
+                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
                                     title={`Scheduled for ${task.displayDate}`}
                                   >
                                     Due
@@ -849,7 +849,7 @@ export default function App() {
                                   <>
                                     {task.isDailyRecurring && (
                                       <span
-                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/20' : 'bg-yellow-100 text-yellow-800 border border-yellow-300'}`}
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#6B7280]/10 text-[#6B7280] border border-[#6B7280]/20' : 'bg-zinc-100 text-zinc-800 border border-zinc-200'}`}
                                         title="Daily recurring task"
                                       >
                                         Daily
@@ -879,14 +879,14 @@ export default function App() {
                             <div className="flex gap-1.5 mt-0.5">
                               <button
                                 onClick={() => openEditModal(task)}
-                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
                                 title={t('tasks.editTooltip')}
                               >
                                 <Edit2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
                               </button>
                               <button
                                 onClick={() => openCalendarModal(task)}
-                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
                                 title={t('tasks.calendarTooltip')}
                               >
                                 <Calendar className="w-4 h-4" strokeWidth={iconStrokeWidth} />
@@ -924,7 +924,7 @@ export default function App() {
                             <p className={`font-medium ${textClass}`}>{task.text}</p>
                             {task.dueDate < todayStr && !task.completed && (
                               <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#D9FF00]/10 text-[#D9FF00] border border-[#D9FF00]/20' : 'bg-black text-white'}`}
+                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
                                 title={`Scheduled for ${task.dueDate}`}
                               >
                                 Due
@@ -964,14 +964,14 @@ export default function App() {
                         <div className="flex gap-1.5">
                           <button
                             onClick={() => openEditModal(task)}
-                            className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                            className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
                             title={t('tasks.editTooltip')}
                           >
                             <Edit2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
                           </button>
                           <button
                             onClick={() => openCalendarModal(task)}
-                            className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#D9FF00] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                            className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
                             title={t('tasks.calendarTooltip')}
                           >
                             <Calendar className="w-4 h-4" strokeWidth={iconStrokeWidth} />
@@ -992,7 +992,7 @@ export default function App() {
                   {sortedTasks.filter(t => t.completed).length > 0 && (
                     <div className="space-y-6 pt-8 border-t border-zinc-900">
                       <div className="flex items-center gap-3 px-1">
-                        <BadgeCheck className={`w-5 h-5 ${theme === 'night' ? 'text-[#FF5252]' : (darkMode ? 'text-[#D9FF00]' : 'text-[#FFD700]')}`} strokeWidth={iconStrokeWidth} />
+                        <BadgeCheck className={`w-5 h-5 ${theme === 'night' ? 'text-[#EF4444]' : (darkMode ? 'text-[#374151]' : 'text-[#6B7280]')}`} strokeWidth={iconStrokeWidth} />
                         <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] ${textSecondaryClass} opacity-60`}>
                           TASKS COMPLETED TODAY
                         </h3>
@@ -1088,7 +1088,7 @@ export default function App() {
                     <button
                       onClick={setTomorrow}
                       className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${scheduleTaskDate && isTomorrow(scheduleTaskDate)
-                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                        ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}`
                         : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
                         }`}
                     >
@@ -1098,7 +1098,7 @@ export default function App() {
                     <button
                       onClick={setNextWeek}
                       className={`flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${scheduleTaskDate && isNextWeek(scheduleTaskDate)
-                        ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                        ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}`
                         : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
                         }`}
                     >
@@ -1108,7 +1108,7 @@ export default function App() {
                     <div className="relative">
                       <button
                         className={`w-full h-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-2xl border-2 transition-all ${isCustomDate(scheduleTaskDate)
-                          ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}`
+                          ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}`
                           : `border-zinc-800 hover:border-zinc-700 ${textSecondaryClass}`
                           }`}
                       >
@@ -1141,7 +1141,7 @@ export default function App() {
                     type="date"
                     value={scheduleTaskDate}
                     onChange={(e) => setScheduleTaskDate(e.target.value)}
-                    className={`w-full px-4 py-5 rounded-2xl border-2 ${inputClass} focus:border-[#FFD700] outline-none transition-all font-bold text-lg max-w-[95%] mx-auto block box-border`}
+                    className={`w-full px-4 py-5 rounded-2xl border-2 ${inputClass} focus:border-[#6B7280] outline-none transition-all font-bold text-lg max-w-[95%] mx-auto block box-border`}
                   />
                 </div>
 
@@ -1150,25 +1150,25 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setRepeatRule('none')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'none' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'none' ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.none')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('daily')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'daily' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'daily' ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.daily')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('weekly')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'weekly' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'weekly' ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.weekly')}
                     </button>
                     <button
                       onClick={() => setRepeatRule('monthly')}
-                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'monthly' ? `border-[#FFD700] bg-[#FFD700]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
+                      className={`px-4 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${repeatRule === 'monthly' ? `border-[#6B7280] bg-[#6B7280]/10 ${textClass}` : 'border-zinc-800 text-zinc-500 hover:border-zinc-700'}`}
                     >
                       {t('schedule.monthly')}
                     </button>
@@ -1209,7 +1209,7 @@ export default function App() {
                     value={editTaskText}
                     onChange={(e) => setEditTaskText(e.target.value)}
                     maxLength={300}
-                    className={`w-full px-5 py-4 rounded-2xl border-2 ${inputClass} ${theme === 'night' ? 'focus:border-[#FF7043]' : (darkMode ? 'focus:border-[#D9FF00]' : 'focus:border-black')} outline-none transition-all font-medium`}
+                    className={`w-full px-5 py-4 rounded-2xl border-2 ${inputClass} ${theme === 'night' ? 'focus:border-[#DC2626]' : (darkMode ? 'focus:border-[#374151]' : 'focus:border-black')} outline-none transition-all font-medium`}
                   />
                 </div>
 
