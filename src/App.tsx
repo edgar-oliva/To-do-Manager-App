@@ -1,6 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight, LogOut, Cloud, CloudCheck, CloudOff } from 'lucide-react';
+import { supabase } from './supabaseClient';
+import { Auth } from './components/Auth';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface Task {
   id: number;
@@ -30,24 +33,32 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completedHistory, setCompletedHistory] = useState<HistoryEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'saved' | 'syncing' | 'error'>('saved');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setUser(currentSession?.user ?? null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setUser(currentSession?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load Initial Data
   useEffect(() => {
     const loadInitialData = async () => {
+      // 1. Load basic settings (theme, lang) from Electron local storage
       if (window.electronAPI) {
-        const savedTasks = await window.electronAPI.loadData('tasks');
-        const savedHistory = await window.electronAPI.loadData('completedHistory');
         const savedDarkMode = await window.electronAPI.loadData('darkMode');
         const savedLang = await window.electronAPI.loadData('language');
 
-        if (savedTasks) {
-          setTasks(savedTasks.map((t: any) => ({ ...t, repeat: t.repeat || 'none' })));
-        }
-        if (savedHistory) {
-          setCompletedHistory(savedHistory);
-        }
         if (savedDarkMode !== null) {
-          // Backward compatibility: if it was a boolean, map it
           if (typeof savedDarkMode === 'boolean') {
             setTheme(savedDarkMode ? 'dark' : 'light');
           } else {
@@ -57,15 +68,127 @@ export default function App() {
         if (savedLang) {
           i18n.changeLanguage(savedLang);
         }
-      } else {
-        // Fallback for web/dev if needed
-        const saved = localStorage.getItem('tasks');
-        if (saved) setTasks(JSON.parse(saved));
       }
+
+      // 2. Load Tasks and History
+      let localTasks: Task[] = [];
+      let localHistory: HistoryEntry[] = [];
+
+      if (window.electronAPI) {
+        const savedTasks = await window.electronAPI.loadData('tasks');
+        const savedHistory = await window.electronAPI.loadData('completedHistory');
+        if (savedTasks) localTasks = savedTasks.map((t: any) => ({ ...t, repeat: t.repeat || 'none' }));
+        if (savedHistory) localHistory = savedHistory;
+      }
+
+      if (user) {
+        setSyncStatus('syncing');
+        try {
+          // Fetch cloud data
+          const { data: cloudTasks } = await supabase.from('tasks').select('*');
+          const { data: cloudHistory } = await supabase.from('history').select('*');
+
+          // Sync local to cloud if cloud is empty or we have new local tasks
+          if (localTasks.length > 0) {
+            for (const task of localTasks) {
+              const exists = cloudTasks?.some(ct => ct.id === task.id);
+              if (!exists) {
+                await supabase.from('tasks').insert({
+                  id: task.id,
+                  user_id: user.id,
+                  text: task.text,
+                  completed: task.completed,
+                  due_date: task.dueDate,
+                  repeat: task.repeat
+                });
+              }
+            }
+          }
+
+          if (localHistory.length > 0) {
+            for (const hist of localHistory) {
+              const exists = cloudHistory?.some(ch => ch.id === hist.historyId);
+              if (!exists) {
+                await supabase.from('history').insert({
+                  id: hist.historyId,
+                  task_id: hist.id,
+                  user_id: user.id,
+                  text: hist.text,
+                  completed_at: hist.completedAt,
+                  due_date: hist.dueDate,
+                  repeat: hist.repeat
+                });
+              }
+            }
+          }
+
+          // Reload from cloud to be sure
+          const { data: finalTasks } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+          const { data: finalHistory } = await supabase.from('history').select('*').order('completed_at', { ascending: false });
+
+          if (finalTasks) {
+            setTasks(finalTasks.map(t => ({
+              id: t.id,
+              text: t.text,
+              completed: t.completed,
+              dueDate: t.due_date,
+              repeat: t.repeat || 'none'
+            })));
+          }
+
+          if (finalHistory) {
+            setCompletedHistory(finalHistory.map(h => ({
+              historyId: h.id,
+              id: h.task_id,
+              text: h.text,
+              completed: true,
+              dueDate: h.due_date,
+              repeat: h.repeat || 'none',
+              completedAt: h.completed_at
+            })));
+          }
+          setSyncStatus('saved');
+        } catch (err) {
+          console.error('Error fetching/syncing with Supabase:', err);
+          setSyncStatus('error');
+        }
+      } else {
+        // Not logged in, use local
+        setTasks(localTasks);
+        setCompletedHistory(localHistory);
+      }
+
       setIsLoaded(true);
     };
-    loadInitialData();
-  }, []);
+    if (isLoaded === false || user) {
+      loadInitialData();
+    }
+  }, [user]);
+
+  // Sync to local storage & Supabase
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (window.electronAPI) {
+      window.electronAPI.saveData('tasks', tasks);
+    }
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (window.electronAPI) {
+      window.electronAPI.saveData('completedHistory', completedHistory);
+    }
+    localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
+  }, [completedHistory, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (window.electronAPI) {
+      window.electronAPI.saveData('completedHistory', completedHistory);
+    }
+  }, [completedHistory, isLoaded]);
   // States handled in useEffect above
   const [newTask, setNewTask] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -98,6 +221,11 @@ export default function App() {
   const [selectedTaskForCalendar, setSelectedTaskForCalendar] = useState<Task | null>(null);
   const [calendarDate, setCalendarDate] = useState('');
   const [calendarTime, setCalendarTime] = useState('');
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsMenuOpen(false);
+  };
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editTaskText, setEditTaskText] = useState('');
   const [editTaskDate, setEditTaskDate] = useState('');
@@ -219,7 +347,28 @@ export default function App() {
         repeat: isScheduled ? repeatRule : 'none'
       };
 
-      setTasks([...tasks, newTaskObj]);
+      setTasks(newTasks => {
+        const updated = [...newTasks, newTaskObj];
+        if (user) {
+          setSyncStatus('syncing');
+          supabase.from('tasks').insert({
+            id: newTaskObj.id,
+            user_id: user.id,
+            text: newTaskObj.text,
+            completed: newTaskObj.completed,
+            due_date: newTaskObj.dueDate,
+            repeat: newTaskObj.repeat
+          }).then(({ error }) => {
+            if (error) {
+              console.error('Error adding task to Supabase:', error);
+              setSyncStatus('error');
+            } else {
+              setSyncStatus('saved');
+            }
+          });
+        }
+        return updated;
+      });
       setNewTask('');
       setShowScheduleModal(false);
       setRepeatRule('none');
@@ -310,6 +459,46 @@ export default function App() {
         completedAt: getLocalDateStr(), // Use local date string instead of UTC ISO
         historyId: Date.now()
       };
+      if (user) {
+        setSyncStatus('syncing');
+        // Move to history in Supabase
+        supabase.from('history').insert({
+          id: historyEntry.historyId,
+          task_id: historyEntry.id,
+          user_id: user.id,
+          text: historyEntry.text,
+          completed_at: historyEntry.completedAt,
+          due_date: historyEntry.dueDate,
+          repeat: historyEntry.repeat
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Error adding history to Supabase:', error);
+            setSyncStatus('error');
+          }
+        });
+
+        if (task.repeat !== 'none') {
+          const nextDate = getNextDate(task.dueDate, task.repeat);
+          supabase.from('tasks').update({ due_date: nextDate }).eq('id', id).then(({ error }) => {
+            if (error) {
+              console.error('Error updating task in Supabase:', error);
+              setSyncStatus('error');
+            } else {
+              setSyncStatus('saved');
+            }
+          });
+        } else {
+          supabase.from('tasks').delete().eq('id', id).then(({ error }) => {
+            if (error) {
+              console.error('Error deleting task from Supabase:', error);
+              setSyncStatus('error');
+            } else {
+              setSyncStatus('saved');
+            }
+          });
+        }
+      }
+
       setCompletedHistory([historyEntry, ...completedHistory]);
 
       if (task.repeat !== 'none') {
@@ -334,11 +523,22 @@ export default function App() {
   const deleteTask = (id: number, deleteAll = true) => {
     if (deleteAll) {
       setTasks(tasks.filter(task => task.id !== id));
+      if (user) {
+        supabase.from('tasks').delete().eq('id', id).then(({ error }) => {
+          if (error) console.error('Error deleting task from Supabase:', error);
+        });
+      }
     } else {
       // Delete only "this session" = skip to next date of occurrence
+      const nextDate = getNextDate(selectedDate, tasks.find(t => t.id === id)?.repeat || 'none');
       setTasks(tasks.map(t =>
-        t.id === id ? { ...t, dueDate: getNextDate(selectedDate, t.repeat) } : t
+        t.id === id ? { ...t, dueDate: nextDate } : t
       ));
+      if (user) {
+        supabase.from('tasks').update({ due_date: nextDate }).eq('id', id).then(({ error }) => {
+          if (error) console.error('Error updating task in Supabase:', error);
+        });
+      }
     }
     setShowDeleteModal(false);
     setTaskToDelete(null);
@@ -362,11 +562,22 @@ export default function App() {
   const saveEditTask = () => {
     if (!editingTask || !editTaskText.trim()) return;
 
+    const updatedTask = { ...editingTask, text: editTaskText, dueDate: editTaskDate, repeat: editTaskRepeat };
     setTasks(tasks.map(task =>
       task.id === editingTask.id
-        ? { ...task, text: editTaskText, dueDate: editTaskDate, repeat: editTaskRepeat }
+        ? updatedTask
         : task
     ));
+
+    if (user) {
+      supabase.from('tasks').update({
+        text: editTaskText,
+        due_date: editTaskDate,
+        repeat: editTaskRepeat
+      }).eq('id', editingTask.id).then(({ error }) => {
+        if (error) console.error('Error updating task in Supabase:', error);
+      });
+    }
 
     setEditingTask(null);
     setEditTaskText('');
@@ -522,6 +733,16 @@ export default function App() {
   const buttonSecondaryClass = theme === 'night' ? 'bg-[#251e1a] border border-[#382b24] text-[#fdf5e6] hover:border-[#5d4a40]' : (darkMode ? 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700' : 'bg-white border border-zinc-200 text-zinc-800');
   const iconStrokeWidth = 2.5;
 
+  if (!isLoaded) return null;
+
+  if (!user) {
+    return (
+      <div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
+        <Auth onAuthSuccess={() => { }} darkMode={darkMode} />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className={`min-h-screen ${bgClass} p-4 transition-colors duration-300`}>
@@ -531,6 +752,16 @@ export default function App() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 relative gap-4 md:gap-0">
               <div className="flex items-center gap-3">
                 <h1 className={`text-4xl font-extrabold tracking-tight ${textClass}`}>{t('appTitle')}</h1>
+                {user && (
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full border animate-in fade-in duration-500 ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200 shadow-sm'}`}>
+                    {syncStatus === 'syncing' && <Cloud className={`w-3.5 h-3.5 animate-pulse ${darkMode ? 'text-zinc-400' : 'text-zinc-400'}`} />}
+                    {syncStatus === 'saved' && <CloudCheck className={`w-3.5 h-3.5 ${darkMode ? 'text-[#6B7280]' : 'text-[#6B7280]'}`} />}
+                    {syncStatus === 'error' && <CloudOff className="w-3.5 h-3.5 text-red-500" />}
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${darkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
+                      {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Synced' : 'Error'}
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex gap-4 items-center">
                 <div className="flex bg-zinc-900 p-1 rounded-full border border-zinc-800">
@@ -559,6 +790,17 @@ export default function App() {
                   {isMenuOpen && (
                     <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-2xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} z-50 overflow-hidden`}>
                       <div className="p-2 space-y-1">
+                        {/* User Profile */}
+                        <div className={`px-4 py-3 flex items-center gap-3 border-b ${darkMode ? 'border-zinc-800' : 'border-zinc-100'}`}>
+                          <div className={`w-8 h-8 rounded-full ${accentColor} flex items-center justify-center text-[10px] font-bold`}>
+                            {user?.email?.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className={`text-xs font-bold truncate ${textClass}`}>{user?.email}</span>
+                            <span className={`text-[10px] ${textSecondaryClass}`}>Supabase User</span>
+                          </div>
+                        </div>
+
                         {/* History */}
                         <button
                           onClick={() => { setView('history'); setIsMenuOpen(false); }}
@@ -568,8 +810,8 @@ export default function App() {
                           {t('menu.history') || 'History'}
                         </button>
 
-                        <h3 className={`text-sm font-bold opacity-70 mb-1 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                          My Task Manager v1.8.9
+                        <h3 className={`text-sm font-bold opacity-70 mb-1 px-4 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          My Task Manager v1.8.4
                         </h3>
                         <div className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}></div>
 
@@ -604,6 +846,17 @@ export default function App() {
                             <span>Night Light</span>
                           </div>
                           {theme === 'night' && <Check className="w-4 h-4 text-[#EF4444]" strokeWidth={iconStrokeWidth} />}
+                        </button>
+
+                        <div className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}></div>
+
+                        {/* Logout */}
+                        <button
+                          onClick={handleLogout}
+                          className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition text-red-500 hover:bg-red-500/10`}
+                        >
+                          <LogOut className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                          Sign Out
                         </button>
 
                         <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
