@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { Mail, Lock, UserPlus, LogIn, Github, Chrome } from 'lucide-react';
+import { Mail, Lock, UserPlus, LogIn, Chrome } from 'lucide-react';
 
 interface AuthProps {
     onAuthSuccess: () => void;
+    onGuestAccess: () => void;
     darkMode: boolean;
 }
 
-export const Auth: React.FC<AuthProps> = ({ onAuthSuccess, darkMode }) => {
+export const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, darkMode }) => {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -134,12 +135,12 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess, darkMode }) => {
                             <span className="text-xs font-bold">Google</span>
                         </button>
                         <button
-                            onClick={() => handleOAuthSignIn('github')}
+                            onClick={onGuestAccess}
                             disabled={loading}
                             className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${darkMode ? 'border-zinc-800 hover:bg-zinc-800' : 'border-zinc-200 hover:bg-zinc-50'}`}
                         >
-                            <Github className="w-5 h-5" />
-                            <span className="text-xs font-bold">GitHub</span>
+                            <UserPlus className="w-5 h-5" />
+                            <span className="text-xs font-bold">Try as Guest</span>
                         </button>
                     </div>
                 </div>

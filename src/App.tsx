@@ -34,6 +34,7 @@ export default function App() {
   const [completedHistory, setCompletedHistory] = useState<HistoryEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'saved' | 'syncing' | 'error'>('saved');
 
   useEffect(() => {
@@ -158,12 +159,12 @@ export default function App() {
         setCompletedHistory(localHistory);
       }
 
+      console.log('Load complete. Tasks:', localTasks.length);
       setIsLoaded(true);
     };
-    if (isLoaded === false || user) {
-      loadInitialData();
-    }
-  }, [user]);
+
+    loadInitialData();
+  }, [user, isGuest]);
 
   // Sync to local storage & Supabase
   useEffect(() => {
@@ -223,8 +224,24 @@ export default function App() {
   const [calendarTime, setCalendarTime] = useState('');
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsMenuOpen(false);
+    console.log('Logging out... User:', !!user, 'Guest:', isGuest);
+    try {
+      if (user) {
+        await supabase.auth.signOut();
+        console.log('Supabase sign out successful');
+      }
+      setIsGuest(false);
+      setIsMenuOpen(false);
+
+      // Clear current state to prevent flash of old data
+      setTasks([]);
+      setCompletedHistory([]);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Fallback: force guest mode off anyway
+      setIsGuest(false);
+      setIsMenuOpen(false);
+    }
   };
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editTaskText, setEditTaskText] = useState('');
@@ -735,10 +752,10 @@ export default function App() {
 
   if (!isLoaded) return null;
 
-  if (!user) {
+  if (!user && !isGuest) {
     return (
       <div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
-        <Auth onAuthSuccess={() => { }} darkMode={darkMode} />
+        <Auth onAuthSuccess={() => { }} onGuestAccess={() => setIsGuest(true)} darkMode={darkMode} />
       </div>
     );
   }
@@ -752,13 +769,19 @@ export default function App() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 relative gap-4 md:gap-0">
               <div className="flex items-center gap-3">
                 <h1 className={`text-4xl font-extrabold tracking-tight ${textClass}`}>{t('appTitle')}</h1>
-                {user && (
+                {(user || isGuest) && (
                   <div className={`flex items-center gap-2 px-3 py-1 rounded-full border animate-in fade-in duration-500 ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-200 shadow-sm'}`}>
-                    {syncStatus === 'syncing' && <Cloud className={`w-3.5 h-3.5 animate-pulse ${darkMode ? 'text-zinc-400' : 'text-zinc-400'}`} />}
-                    {syncStatus === 'saved' && <CloudCheck className={`w-3.5 h-3.5 ${darkMode ? 'text-[#6B7280]' : 'text-[#6B7280]'}`} />}
-                    {syncStatus === 'error' && <CloudOff className="w-3.5 h-3.5 text-red-500" />}
+                    {isGuest ? (
+                      <CloudOff className={`w-3.5 h-3.5 text-zinc-400`} />
+                    ) : (
+                      <>
+                        {syncStatus === 'syncing' && <Cloud className={`w-3.5 h-3.5 animate-pulse ${darkMode ? 'text-zinc-400' : 'text-zinc-400'}`} />}
+                        {syncStatus === 'saved' && <CloudCheck className={`w-3.5 h-3.5 ${darkMode ? 'text-[#6B7280]' : 'text-[#6B7280]'}`} />}
+                        {syncStatus === 'error' && <CloudOff className="w-3.5 h-3.5 text-red-500" />}
+                      </>
+                    )}
                     <span className={`text-[9px] font-black uppercase tracking-widest ${darkMode ? 'text-zinc-500' : 'text-zinc-500'}`}>
-                      {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Synced' : 'Error'}
+                      {isGuest ? 'Local-Only' : (syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'saved' ? 'Synced' : 'Error')}
                     </span>
                   </div>
                 )}
@@ -793,11 +816,11 @@ export default function App() {
                         {/* User Profile */}
                         <div className={`px-4 py-3 flex items-center gap-3 border-b ${darkMode ? 'border-zinc-800' : 'border-zinc-100'}`}>
                           <div className={`w-8 h-8 rounded-full ${accentColor} flex items-center justify-center text-[10px] font-bold`}>
-                            {user?.email?.substring(0, 2).toUpperCase()}
+                            {(user?.email || 'Guest').substring(0, 2).toUpperCase()}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className={`text-xs font-bold truncate ${textClass}`}>{user?.email}</span>
-                            <span className={`text-[10px] ${textSecondaryClass}`}>Supabase User</span>
+                            <span className={`text-xs font-bold truncate ${textClass}`}>{user?.email || 'Guest User'}</span>
+                            <span className={`text-[10px] ${textSecondaryClass}`}>{user ? 'Supabase User' : 'Local Persistence'}</span>
                           </div>
                         </div>
 
