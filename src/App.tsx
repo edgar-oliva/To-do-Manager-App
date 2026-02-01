@@ -107,22 +107,29 @@ export default function App() {
         setSyncStatus('syncing');
         try {
           // Fetch cloud data
-          const { data: cloudTasks } = await supabase.from('tasks').select('*');
-          const { data: cloudHistory } = await supabase.from('history').select('*');
+          const { data: cloudTasks, error: tasksError } = await supabase.from('tasks').select('*');
+          if (tasksError) throw tasksError;
+
+          const { data: cloudHistory, error: historyError } = await supabase.from('history').select('*');
+          if (historyError) throw historyError;
 
           // Sync local to cloud if cloud is empty or we have new local tasks
           if (localTasks.length > 0) {
             for (const task of localTasks) {
               const exists = cloudTasks?.some(ct => ct.id === task.id);
               if (!exists) {
-                await supabase.from('tasks').insert({
-                  id: task.id,
+                const { error: insertError } = await supabase.from('tasks').insert({
                   user_id: user.id,
                   text: task.text,
                   completed: task.completed,
                   due_date: task.dueDate,
                   repeat: task.repeat
                 });
+                if (insertError) {
+                  console.error('Failed to sync task:', task, insertError);
+                  // Don't throw immediately, try others, but mark error
+                  setSyncStatus('error');
+                }
               }
             }
           }
@@ -131,8 +138,7 @@ export default function App() {
             for (const hist of localHistory) {
               const exists = cloudHistory?.some(ch => ch.id === hist.historyId);
               if (!exists) {
-                await supabase.from('history').insert({
-                  id: hist.historyId,
+                const { error: insertHistError } = await supabase.from('history').insert({
                   task_id: hist.id,
                   user_id: user.id,
                   text: hist.text,
@@ -140,13 +146,20 @@ export default function App() {
                   due_date: hist.dueDate,
                   repeat: hist.repeat
                 });
+                if (insertHistError) {
+                  console.error('Failed to sync history:', hist, insertHistError);
+                  setSyncStatus('error');
+                }
               }
             }
           }
 
           // Reload from cloud to be sure
-          const { data: finalTasks } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-          const { data: finalHistory } = await supabase.from('history').select('*').order('completed_at', { ascending: false });
+          const { data: finalTasks, error: finalTasksError } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+          if (finalTasksError) throw finalTasksError;
+
+          const { data: finalHistory, error: finalHistoryError } = await supabase.from('history').select('*').order('completed_at', { ascending: false });
+          if (finalHistoryError) throw finalHistoryError;
 
           if (finalTasks) {
             setTasks(finalTasks.map(t => ({
@@ -169,7 +182,9 @@ export default function App() {
               completedAt: h.completed_at
             })));
           }
-          setSyncStatus('saved');
+
+          // Only set saved if we didn't encounter errors (syncStatus might be 'error' from loops)
+          setSyncStatus(prev => prev === 'error' ? 'error' : 'saved');
         } catch (err) {
           console.error('Error fetching/syncing with Supabase:', err);
           setSyncStatus('error');
@@ -222,23 +237,27 @@ export default function App() {
   const [calendarTime, setCalendarTime] = useState('');
 
   const handleLogout = async () => {
-    console.log('Logging out... User:', !!user, 'Guest:', isGuest);
     try {
       if (user) {
         await supabase.auth.signOut();
-        console.log('Supabase sign out successful');
-      }
-      setIsGuest(false);
-      setIsMenuOpen(false);
 
-      // Clear current state to prevent flash of old data
-      setTasks([]);
-      setCompletedHistory([]);
+        // Clear all local data to ensure a clean slate for the next session/guest
+        localStorage.removeItem('tasks');
+        localStorage.removeItem('completedHistory');
+        localStorage.removeItem('tasksAddedCount');
+        localStorage.removeItem('loginPromptSuppressed');
+        localStorage.removeItem('nextPromptThreshold');
+
+        // Reload the page to reset the app state completely
+        window.location.reload();
+      } else {
+        // If somehow called without user (fallback)
+        setIsGuest(false);
+        setIsMenuOpen(false);
+      }
     } catch (error) {
       console.error('Error during logout:', error);
-      // Fallback: force guest mode off anyway
-      setIsGuest(false);
-      setIsMenuOpen(false);
+      window.location.reload();
     }
   };
 
@@ -397,21 +416,30 @@ export default function App() {
         const updated = [...newTasks, newTaskObj];
         if (user) {
           setSyncStatus('syncing');
+          // Remove ID from insert payload to let Postgres generate it
+          const { id, ...taskPayload } = newTaskObj;
+
           supabase.from('tasks').insert({
-            id: newTaskObj.id,
             user_id: user.id,
-            text: newTaskObj.text,
-            completed: newTaskObj.completed,
-            due_date: newTaskObj.dueDate,
-            repeat: newTaskObj.repeat
-          }).then(({ error }) => {
-            if (error) {
-              console.error('Error adding task to Supabase:', error);
-              setSyncStatus('error');
-            } else {
-              setSyncStatus('saved');
-            }
-          });
+            text: taskPayload.text,
+            completed: taskPayload.completed,
+            due_date: taskPayload.dueDate,
+            repeat: taskPayload.repeat
+          })
+            .select()
+            .single()
+            .then(({ data, error }) => {
+              if (error) {
+                console.error('Error adding task to Supabase:', error);
+                setSyncStatus('error');
+              } else if (data) {
+                setSyncStatus('saved');
+                // Update the local task with the real server-generated ID
+                setTasks(currentTasks =>
+                  currentTasks.map(t => t.id === newTaskObj.id ? { ...t, id: data.id } : t)
+                );
+              }
+            });
         }
         return updated;
       });
@@ -509,8 +537,8 @@ export default function App() {
       if (user) {
         setSyncStatus('syncing');
         // Move to history in Supabase
+        // Omit 'id' to let Postgres generate it
         supabase.from('history').insert({
-          id: historyEntry.historyId,
           task_id: historyEntry.id,
           user_id: user.id,
           text: historyEntry.text,
@@ -912,11 +940,11 @@ export default function App() {
 
                         {/* Logout / Login */}
                         <button
-                          onClick={handleLogout}
-                          className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${isGuest ? 'text-blue-500 hover:bg-blue-500/10' : 'text-red-500 hover:bg-red-500/10'}`}
+                          onClick={isGuest ? () => { setIsGuest(false); setIsMenuOpen(false); } : handleLogout}
+                          className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${isGuest ? (darkMode ? 'hover:bg-zinc-800' : 'hover:bg-zinc-50') : 'text-red-500 hover:bg-red-500/10'}`}
                         >
                           {isGuest ? <LogIn className="w-4 h-4" strokeWidth={iconStrokeWidth} /> : <LogOut className="w-4 h-4" strokeWidth={iconStrokeWidth} />}
-                          {isGuest ? 'Sign In' : 'Sign Out'}
+                          <span className={isGuest ? textClass : ''}>{isGuest ? 'Sign In' : 'Sign Out'}</span>
                         </button>
 
                         <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
