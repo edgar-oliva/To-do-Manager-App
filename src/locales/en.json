@@ -114,6 +114,19 @@
             "onlyThis": "Only this session",
             "allOccurrences": "All future tasks",
             "cancel": "Cancel"
-        }
+        },
+        "login": "Log In / Sign Up"
+    },
+    "onboarding": {
+        "saveOnline": "Save your tasks online?",
+        "loginPromptDesc": "Create an account to sync your tasks across devices and never lose them.",
+        "continueGuest": "Continue as Guest",
+        "askLater": "Ask Me Later",
+        "dontAskAgain": "Don't ask again",
+        "understood": "Understood!",
+        "manualLoginInfo": "You can always log in later from the menu (top right) to save your tasks."
+    },
+    "common": {
+        "ok": "OK"
     }
 }

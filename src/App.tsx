@@ -18,15 +18,7 @@ interface HistoryEntry extends Task {
   historyId: number;
 }
 
-declare global {
-  interface Window {
-    electronAPI: {
-      saveData: (key: string, data: any) => Promise<boolean>;
-      loadData: (key: string) => Promise<any>;
-      getPlatform: () => string;
-    }
-  }
-}
+
 
 export default function App() {
   const { t, i18n } = useTranslation();
@@ -34,18 +26,32 @@ export default function App() {
   const [completedHistory, setCompletedHistory] = useState<HistoryEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isGuest, setIsGuest] = useState(true);
   const [syncStatus, setSyncStatus] = useState<'saved' | 'syncing' | 'error'>('saved');
+  const [tasksAddedCount, setTasksAddedCount] = useState(0);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showDontAskInfo, setShowDontAskInfo] = useState(false);
+  const [dontAskAgainChecked, setDontAskAgainChecked] = useState(false);
+  const [nextPromptThreshold, setNextPromptThreshold] = useState(3);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setUser(currentSession?.user ?? null);
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        setIsGuest(false);
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setUser(currentSession?.user ?? null);
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        setIsGuest(false);
+      } else {
+        setUser(null);
+        setIsGuest(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -54,32 +60,47 @@ export default function App() {
   // Load Initial Data
   useEffect(() => {
     const loadInitialData = async () => {
-      // 1. Load basic settings (theme, lang) from Electron local storage
-      if (window.electronAPI) {
-        const savedDarkMode = await window.electronAPI.loadData('darkMode');
-        const savedLang = await window.electronAPI.loadData('language');
+      // 1. Load basic settings (theme, lang) from Local Storage
+      const savedDarkMode = localStorage.getItem('darkMode');
+      const savedLang = localStorage.getItem('language');
 
-        if (savedDarkMode !== null) {
-          if (typeof savedDarkMode === 'boolean') {
-            setTheme(savedDarkMode ? 'dark' : 'light');
+      if (savedDarkMode) {
+        try {
+          const parsed = JSON.parse(savedDarkMode);
+          if (typeof parsed === 'boolean') {
+            setTheme(parsed ? 'dark' : 'light');
           } else {
-            setTheme(savedDarkMode as any);
+            setTheme(parsed);
           }
+        } catch (e) {
+          console.error("Failed to parse dark mode setting", e);
         }
-        if (savedLang) {
-          i18n.changeLanguage(savedLang);
-        }
+      }
+
+      if (savedLang) {
+        i18n.changeLanguage(savedLang);
       }
 
       // 2. Load Tasks and History
       let localTasks: Task[] = [];
       let localHistory: HistoryEntry[] = [];
 
-      if (window.electronAPI) {
-        const savedTasks = await window.electronAPI.loadData('tasks');
-        const savedHistory = await window.electronAPI.loadData('completedHistory');
-        if (savedTasks) localTasks = savedTasks.map((t: any) => ({ ...t, repeat: t.repeat || 'none' }));
-        if (savedHistory) localHistory = savedHistory;
+      try {
+        const tasksStr = localStorage.getItem('tasks');
+        if (tasksStr) {
+          const parsedTasks = JSON.parse(tasksStr);
+          if (Array.isArray(parsedTasks)) {
+            localTasks = parsedTasks.map((t: any) => ({ ...t, repeat: t.repeat || 'none' }));
+          }
+        }
+
+        const historyStr = localStorage.getItem('completedHistory');
+        if (historyStr) {
+          const parsedHistory = JSON.parse(historyStr);
+          if (Array.isArray(parsedHistory)) localHistory = parsedHistory;
+        }
+      } catch (e) {
+        console.error("Failed to load local data", e);
       }
 
       if (user) {
@@ -166,30 +187,7 @@ export default function App() {
     loadInitialData();
   }, [user, isGuest]);
 
-  // Sync to local storage & Supabase
-  useEffect(() => {
-    if (!isLoaded) return;
 
-    if (window.electronAPI) {
-      window.electronAPI.saveData('tasks', tasks);
-    }
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (window.electronAPI) {
-      window.electronAPI.saveData('completedHistory', completedHistory);
-    }
-    localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
-  }, [completedHistory, isLoaded]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (window.electronAPI) {
-      window.electronAPI.saveData('completedHistory', completedHistory);
-    }
-  }, [completedHistory, isLoaded]);
   // States handled in useEffect above
   const [newTask, setNewTask] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -243,6 +241,7 @@ export default function App() {
       setIsMenuOpen(false);
     }
   };
+
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editTaskText, setEditTaskText] = useState('');
   const [editTaskDate, setEditTaskDate] = useState('');
@@ -255,12 +254,52 @@ export default function App() {
     return `${year}-${month}-${day}`;
   });
 
+  // Login Prompt Logic
+  useEffect(() => {
+    if (user || isMenuOpen) return; // Don't interrupt if logged in or menu open
+
+    const isSuppressed = localStorage.getItem('loginPromptSuppressed') === 'true';
+    if (isSuppressed) return;
+
+    if (tasksAddedCount > 0 && tasksAddedCount % nextPromptThreshold === 0) {
+      if (!showLoginPrompt && !showDontAskInfo) {
+        setShowLoginPrompt(true);
+      }
+    }
+  }, [tasksAddedCount, user, nextPromptThreshold, isMenuOpen]);
+
+  const handleLoginPromptChoice = (choice: 'login' | 'later') => {
+    if (dontAskAgainChecked) {
+      localStorage.setItem('loginPromptSuppressed', 'true');
+      setShowLoginPrompt(false);
+      setShowDontAskInfo(true); // Show info popup
+      return;
+    }
+
+    if (choice === 'login') {
+      setShowLoginPrompt(false);
+      // For now, redirect to Auth or handle login triggering.
+      // Since Auth is conditionally rendered, we might need to force a state
+      // that shows Auth? Or just tell them to use the menu?
+      // "asking if he/she would like to log in"
+      // Simplest way: Set isGuest(false) and ensure user is null, 
+      // but we need to prevent the app from just auto-switching back to guest.
+      // Actually, typically we'd show the Auth modal.
+      // Let's toggle a state to show Auth modal overlay or redirect.
+      // For this implementation, let's assume we redirect to the "Welcome" screen
+      // by setting isGuest(false). But wait, our logic defaults isGuest=true
+      // if no user. We might need a flag `forceAuthView`.
+      setIsGuest(false);
+    } else if (choice === 'later') {
+      setShowLoginPrompt(false);
+      // Set to 30 tasks only after user clicks "ask me later"
+      setNextPromptThreshold(30);
+    }
+  };
+
   const resetApp = () => {
     if (confirm(t('menu.restartConfirm'))) {
-      if (window.electronAPI) {
-        window.electronAPI.saveData('tasks', []);
-        window.electronAPI.saveData('completedHistory', []);
-      }
+
       localStorage.clear();
       window.location.reload();
     }
@@ -269,39 +308,29 @@ export default function App() {
 
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
-    if (window.electronAPI) {
-      window.electronAPI.saveData('language', lang);
-    }
+
     localStorage.setItem('language', lang);
   };
 
   // Persist tasks
   useEffect(() => {
-    if (isLoaded && window.electronAPI) {
-      window.electronAPI.saveData('tasks', tasks);
-    }
+
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks, isLoaded]);
 
   // Persist settings
   useEffect(() => {
-    if (isLoaded && window.electronAPI) {
-      window.electronAPI.saveData('darkMode', darkMode);
-    }
+
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode, isLoaded]);
 
   useEffect(() => {
-    if (isLoaded && window.electronAPI) {
-      window.electronAPI.saveData('completedHistory', completedHistory);
-    }
+
     localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
   }, [completedHistory, isLoaded]);
 
   useEffect(() => {
-    if (isLoaded && window.electronAPI) {
-      window.electronAPI.saveData('completedHistory', completedHistory);
-    }
+
     localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
   }, [completedHistory, isLoaded]);
 
@@ -386,6 +415,7 @@ export default function App() {
         }
         return updated;
       });
+      setTasksAddedCount(prev => prev + 1);
       setNewTask('');
       setShowScheduleModal(false);
       setRepeatRule('none');
@@ -687,22 +717,29 @@ export default function App() {
   };
 
   // 1. Get recurring/scheduled tasks for the selected date PLUS past pending tasks if today
-  const baseTasks = tasks.filter(task => {
+  const baseTasks = tasks.reduce<Task[]>((acc, task) => {
     // Check if it's an exact date match
-    if (task.dueDate === selectedDate) return true;
+    if (task.dueDate === selectedDate) {
+      acc.push(task);
+      return acc;
+    }
 
     // Check if it's a recurring task that matches the selected date
     if (task.repeat !== 'none' && isDateInRecurringSchedule(task.dueDate, selectedDate, task.repeat)) {
-      return true;
+      // Visually override the display date to match the selected view date
+      // This ensures that when viewing "Next Week", the task appears to be due that day
+      acc.push({ ...task, dueDate: selectedDate });
+      return acc;
     }
 
     // For today's view, also show overdue tasks
     if (selectedDate === todayStr && task.dueDate < todayStr && !task.completed) {
-      return true;
+      acc.push(task);
+      return acc;
     }
 
-    return false;
-  });
+    return acc;
+  }, []);
 
   // 2. Get history entries completed today locally
   const historyCompletedToday = completedHistory
@@ -841,7 +878,7 @@ export default function App() {
                         {/* Theme */}
                         <div className={`px-4 py-2 text-xs font-black uppercase tracking-[0.2em] ${textSecondaryClass} opacity-60`}>Theme</div>
                         <button
-                          onClick={() => { setTheme('dark'); if (window.electronAPI) window.electronAPI.saveData('darkMode', 'dark'); }}
+                          onClick={() => { setTheme('dark'); }}
                           className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${theme === 'dark' ? (darkMode ? 'bg-zinc-900/60' : 'bg-zinc-100') : (darkMode ? 'hover:bg-zinc-900/40' : 'hover:bg-zinc-50')} ${textClass}`}
                         >
                           <div className="flex items-center gap-3">
@@ -851,7 +888,7 @@ export default function App() {
                           {theme === 'dark' && <Check className="w-4 h-4 text-[#6B7280]" strokeWidth={iconStrokeWidth} />}
                         </button>
                         <button
-                          onClick={() => { setTheme('light'); if (window.electronAPI) window.electronAPI.saveData('darkMode', 'light'); }}
+                          onClick={() => { setTheme('light'); }}
                           className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${theme === 'light' ? (darkMode ? 'bg-zinc-900/60' : 'bg-zinc-100') : (darkMode ? 'hover:bg-zinc-900/40' : 'hover:bg-zinc-50')} ${textClass}`}
                         >
                           <div className="flex items-center gap-3">
@@ -861,7 +898,7 @@ export default function App() {
                           {theme === 'light' && <Check className="w-4 h-4 text-black" strokeWidth={iconStrokeWidth} />}
                         </button>
                         <button
-                          onClick={() => { setTheme('night'); if (window.electronAPI) window.electronAPI.saveData('darkMode', 'night'); }}
+                          onClick={() => { setTheme('night'); }}
                           className={`w-full text-left px-4 py-2 rounded-lg flex items-center justify-between transition ${theme === 'night' ? (darkMode ? 'bg-zinc-900/60' : 'bg-zinc-100') : (darkMode ? 'hover:bg-zinc-900/40' : 'hover:bg-zinc-50')} ${textClass}`}
                         >
                           <div className="flex items-center gap-3">
@@ -1619,6 +1656,73 @@ export default function App() {
           </div>
         )
       }
+
+
+      {/* Login Prompt Modal */}
+      {showLoginPrompt && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-sm w-full border text-center animate-in zoom-in-95 duration-200`}>
+            <div className={`w-12 h-12 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+              <Cloud className="w-6 h-6 text-blue-500" />
+            </div>
+            <h3 className={`text-xl font-bold ${textClass} mb-2`}>{t('onboarding.saveOnline') || "Save your tasks online?"}</h3>
+            <p className={`${textSecondaryClass} mb-6 text-sm divide-y`}>
+              {t('onboarding.loginPromptDesc') || "Create an account to sync your tasks across devices and never lose them."}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handleLoginPromptChoice('login')}
+                className={`w-full py-3.5 rounded-full font-black uppercase tracking-widest text-xs ${buttonPrimaryClass}`}
+              >
+                {t('menu.login') || "Log In / Sign Up"}
+              </button>
+
+              <button
+                onClick={() => handleLoginPromptChoice('later')}
+                className={`w-full py-3 rounded-full font-black uppercase tracking-widest text-[10px] border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all`}
+              >
+                {t('onboarding.continueGuest') || "Continue as Guest"}
+              </button>
+
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    id="dontAskAgain"
+                    checked={dontAskAgainChecked}
+                    onChange={(e) => setDontAskAgainChecked(e.target.checked)}
+                    className="peer h-4 w-4 cursor-pointer appearance-none rounded border border-zinc-600 checked:bg-blue-500 checked:border-blue-500 transition-all"
+                  />
+                  <Check className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
+                </div>
+                <label htmlFor="dontAskAgain" className={`${textSecondaryClass} text-xs cursor-pointer select-none`}>
+                  {t('onboarding.dontAskAgain') || "Don't ask again"}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Don't Ask Again Info Modal */}
+      {showDontAskInfo && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className={`${cardClass} rounded-2xl shadow-2xl p-6 max-w-sm w-full border text-center animate-in zoom-in-95 duration-200`}>
+            <CheckCircle className="w-12 h-12 mx-auto mb-4 text-emerald-500" />
+            <h3 className={`text-xl font-bold ${textClass} mb-2`}>{t('onboarding.understood') || "Understood!"}</h3>
+            <p className={`${textSecondaryClass} mb-6 text-sm`}>
+              {t('onboarding.manualLoginInfo') || "You can always log in later from the menu (top right) to save your tasks."}
+            </p>
+            <button
+              onClick={() => setShowDontAskInfo(false)}
+              className={`w-full py-3 rounded-full font-black uppercase tracking-widest text-xs ${buttonPrimaryClass}`}
+            >
+              {t('common.ok') || "Got it"}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

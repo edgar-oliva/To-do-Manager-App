@@ -114,6 +114,19 @@
             "onlyThis": "Solo esta sesión",
             "allOccurrences": "Todas las tareas futuras",
             "cancel": "Cancelar"
-        }
+        },
+        "login": "Iniciar Sesión / Registrarse"
+    },
+    "onboarding": {
+        "saveOnline": "¿Guardar tareas online?",
+        "loginPromptDesc": "Crea una cuenta para sincronizar tus tareas entre dispositivos y nunca perderlas.",
+        "continueGuest": "Continuar como invitado",
+        "askLater": "Preguntar más tarde",
+        "dontAskAgain": "No preguntar de nuevo",
+        "understood": "¡Entendido!",
+        "manualLoginInfo": "Siempre puedes iniciar sesión más tarde desde el menú (arriba a la derecha) para guardar tus tareas."
+    },
+    "common": {
+        "ok": "OK"
     }
 }

@@ -5,19 +5,13 @@
   "description": "My professional Task Manager app",
   "author": "Edgar Martinez Oliva",
   "type": "module",
-  "main": "dist-electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "electron:build": "tsup electron/main.ts electron/preload.ts --format cjs --out-dir dist-electron --clean --external electron",
-    "electron:start": "npm run electron:build && electron ."
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^8.0.0",
-    "@capacitor/core": "^8.0.0",
-    "@capacitor/ios": "^8.0.0",
     "@supabase/supabase-js": "^2.91.0",
     "clsx": "^2.1.1",
     "i18next": "^25.7.3",
@@ -28,7 +22,6 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.0.0",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^24.10.1",
@@ -36,33 +29,14 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.23",
-    "electron": "^39.2.7",
-    "electron-builder": "^26.0.12",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
-    "tsup": "^8.5.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
-  },
-  "build": {
-    "appId": "com.taskmanager.app",
-    "productName": "My Task Manager",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
-    ],
-    "mac": {
-      "target": "dir",
-      "category": "public.app-category.productivity",
-      "icon": "build/Mylogo-main.icns"
-    }
   }
 }
