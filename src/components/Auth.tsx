@@ -72,7 +72,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onGuestAccess, darkMo
                         {isRegistering ? <UserPlus className="text-white w-8 h-8" /> : <LogIn className="text-white w-8 h-8" />}
                     </div>
                     <h1 className="text-3xl font-black tracking-tight mb-2">
-                        {isRegistering ? 'Create Account' : 'Welcome Back'}
+                        {isRegistering ? 'Create Account' : 'Welcome'}
                     </h1>
                     <p className={`text-sm ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
                         {isRegistering ? 'Join My Task Manager today' : 'Sign in to sync your tasks'}

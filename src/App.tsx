@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight, LogOut, Cloud, CloudCheck, CloudOff } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight, LogOut, LogIn, Cloud, CloudCheck, CloudOff } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Auth } from './components/Auth';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -910,13 +910,13 @@ export default function App() {
 
                         <div className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}></div>
 
-                        {/* Logout */}
+                        {/* Logout / Login */}
                         <button
                           onClick={handleLogout}
-                          className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition text-red-500 hover:bg-red-500/10`}
+                          className={`w-full text-left px-4 py-2 rounded-lg flex items-center gap-3 transition ${isGuest ? 'text-blue-500 hover:bg-blue-500/10' : 'text-red-500 hover:bg-red-500/10'}`}
                         >
-                          <LogOut className="w-4 h-4" strokeWidth={iconStrokeWidth} />
-                          Sign Out
+                          {isGuest ? <LogIn className="w-4 h-4" strokeWidth={iconStrokeWidth} /> : <LogOut className="w-4 h-4" strokeWidth={iconStrokeWidth} />}
+                          {isGuest ? 'Sign In' : 'Sign Out'}
                         </button>
 
                         <div className={`h-px my-1 ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}></div>
