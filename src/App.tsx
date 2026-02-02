@@ -99,6 +99,12 @@ export default function App() {
           const parsedHistory = JSON.parse(historyStr);
           if (Array.isArray(parsedHistory)) localHistory = parsedHistory;
         }
+
+        const savedCount = localStorage.getItem('tasksAddedCount');
+        if (savedCount) setTasksAddedCount(JSON.parse(savedCount));
+
+        const savedThreshold = localStorage.getItem('nextPromptThreshold');
+        if (savedThreshold) setNextPromptThreshold(JSON.parse(savedThreshold));
       } catch (e) {
         console.error("Failed to load local data", e);
       }
@@ -316,13 +322,33 @@ export default function App() {
     }
   };
 
-  const resetApp = () => {
+  const resetApp = async () => {
     if (confirm(t('menu.restartConfirm'))) {
+      setIsMenuOpen(false);
 
-      localStorage.clear();
+      if (user) {
+        setSyncStatus('syncing');
+        try {
+          await supabase.from('tasks').delete().eq('user_id', user.id);
+          await supabase.from('history').delete().eq('user_id', user.id);
+        } catch (err) {
+          console.error('Failed to clear cloud data:', err);
+        }
+      }
+
+      localStorage.removeItem('tasks');
+      localStorage.removeItem('completedHistory');
+      localStorage.removeItem('tasksAddedCount');
+      localStorage.removeItem('loginPromptSuppressed');
+      localStorage.removeItem('nextPromptThreshold');
+
+      setTasks([]);
+      setCompletedHistory([]);
+      setTasksAddedCount(0);
+      setNextPromptThreshold(3);
+
       window.location.reload();
     }
-    setIsMenuOpen(false);
   };
 
   const changeLanguage = (lang: string) => {
@@ -333,25 +359,26 @@ export default function App() {
 
   // Persist tasks
   useEffect(() => {
-
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks, isLoaded]);
 
+  // Persist history
+  useEffect(() => {
+    localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
+  }, [completedHistory, isLoaded]);
+
   // Persist settings
   useEffect(() => {
-
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode, isLoaded]);
 
   useEffect(() => {
-
-    localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
-  }, [completedHistory, isLoaded]);
+    localStorage.setItem('tasksAddedCount', JSON.stringify(tasksAddedCount));
+  }, [tasksAddedCount, isLoaded]);
 
   useEffect(() => {
-
-    localStorage.setItem('completedHistory', JSON.stringify(completedHistory));
-  }, [completedHistory, isLoaded]);
+    localStorage.setItem('nextPromptThreshold', JSON.stringify(nextPromptThreshold));
+  }, [nextPromptThreshold, isLoaded]);
 
   useEffect(() => {
     const today = new Date();
