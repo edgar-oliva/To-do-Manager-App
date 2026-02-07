@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, Edit2, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight, LogOut, LogIn, Cloud, CloudCheck, CloudOff } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Circle, Calendar, Sun, Moon, MoreVertical, RotateCcw, Check, Eye, BadgeCheck, ArrowRight, LogOut, LogIn, Cloud, CloudCheck, CloudOff } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Auth } from './components/Auth';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -716,10 +716,42 @@ export default function App() {
 
   const todayStr = getLocalDateStr();
 
-  // Get all dates for the next 7 days (including today)
+  const getFormattedDate = (dateStr: string) => {
+    // Parse date as local
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dayNum = date.getDate();
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const monthName = monthNames[date.getMonth()];
+
+    const getOrdinal = (n: number) => {
+      const s = ["th", "st", "nd", "rd"];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+
+    const formattedDate = `${monthName} ${getOrdinal(dayNum)}`;
+    const hasYear = date.getFullYear() !== today.getFullYear();
+    const yearStr = hasYear ? `, ${date.getFullYear()}` : '';
+
+    if (dateStr === todayStr) {
+      return `Today - ${formattedDate}${yearStr}`;
+    }
+    if (isTomorrow(dateStr)) {
+      return `Tomorrow - ${formattedDate}${yearStr}`;
+    }
+    return `${formattedDate}${yearStr}`;
+  };
+
+  // Get all dates for the next 7 days (starting tomorrow)
   const getNext7Days = () => {
     const dates: string[] = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 1; i <= 7; i++) {
       dates.push(getLocalDateStr(i));
     }
     return dates;
@@ -734,9 +766,8 @@ export default function App() {
     tasks.forEach(task => {
       if (task.completed) return; // Only show pending tasks
 
-      // Include overdue tasks
+      // Exclude overdue tasks from Upcoming (they show in Today view)
       if (task.dueDate < todayStr) {
-        upcomingTasks.push({ ...task, displayDate: task.dueDate });
         return;
       }
 
@@ -915,7 +946,7 @@ export default function App() {
                       <div className="p-2 space-y-1">
                         {/* User Profile */}
                         <div className={`px-4 py-3 flex items-center gap-3 border-b ${darkMode ? 'border-zinc-800' : 'border-zinc-100'}`}>
-                          <div className={`w-8 h-8 rounded-full ${accentColor} flex items-center justify-center text-[10px] font-bold`}>
+                          <div className={`w-8 h-8 rounded-full ${accentColor} flex items-center justify-center text-[10px] font-bold flex-shrink-0`}>
                             {(user?.email || 'Guest').substring(0, 2).toUpperCase()}
                           </div>
                           <div className="flex flex-col min-w-0">
@@ -932,10 +963,6 @@ export default function App() {
                           <BadgeCheck className="w-4 h-4" strokeWidth={iconStrokeWidth} />
                           {t('menu.history') || 'History'}
                         </button>
-
-                        <h3 className={`text-sm font-bold opacity-70 mb-1 px-4 ${darkMode ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                          My Task Manager v1.8.4
-                        </h3>
                         <div className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-100'}`}></div>
 
                         {/* Theme */}
@@ -1136,7 +1163,7 @@ export default function App() {
                     <span className="hidden md:inline">{t('calendar.upcomingTasks') || 'Upcoming tasks'}</span>
                   </button>
                 </div>
-                <div className={`${theme === 'night' ? 'bg-[#251e1a] border-[#382b24]' : (darkMode ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200')} border rounded-2xl p-6 mb-8 shadow-sm transition-all`}>
+                <div className={`${theme === 'night' ? 'bg-[#251e1a] border-[#382b24]' : (darkMode ? 'bg-zinc-900/40 border-zinc-800' : 'bg-white border-zinc-200')} border rounded-2xl p-6 mb-4 shadow-sm transition-all`}>
                   <div className="flex flex-col gap-3">
                     <input
                       type="text"
@@ -1170,11 +1197,19 @@ export default function App() {
                   </div>
                 </div>
 
+                {!showUpcomingView && (
+                  <div className="mb-6 px-1">
+                    <h2 className={`text-xl font-bold ${textClass}`}>
+                      {getFormattedDate(selectedDate)}
+                    </h2>
+                  </div>
+                )}
+
                 <div className="space-y-8">
                   {/* Active Tasks Section */}
                   <div className="space-y-3">
                     {showUpcomingView ? (
-                      // Upcoming Tasks View (next 7 days)
+                      // Upcoming Tasks View (next 7 days) grouped by date
                       (() => {
                         const upcomingTasks = getUpcomingTasks();
                         if (upcomingTasks.length === 0) {
@@ -1185,96 +1220,101 @@ export default function App() {
                             </div>
                           );
                         }
-                        return upcomingTasks.map((task: any) => (
-                          <div
-                            key={`${task.id}-${task.displayDate || task.dueDate}`}
-                            className={`flex items-start gap-4 p-5 rounded-2xl border border-zinc-900 transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
-                          >
-                            <button
-                              onClick={() => toggleTask(task.id)}
-                              className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110 mt-0.25"
-                            >
-                              <Circle className={`w-6 h-6 ${darkMode ? 'text-zinc-700' : 'text-zinc-300'}`} strokeWidth={iconStrokeWidth} />
-                            </button>
 
-                            <div className="flex-1 min-w-0">
-                              <p className={`font-medium ${textClass} break-words pr-2`}>{task.text}</p>
+                        // Group by date
+                        const groups = upcomingTasks.reduce((acc: any, task) => {
+                          const d = task.displayDate || task.dueDate;
+                          if (!acc[d]) acc[d] = [];
+                          acc[d].push(task);
+                          return acc;
+                        }, {});
 
-                              <div className="flex flex-wrap gap-2 mt-1.5 items-center">
-                                {task.displayDate && task.displayDate < todayStr && (
-                                  <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
-                                    title={`Scheduled for ${task.displayDate}`}
+                        const sortedDates = Object.keys(groups).sort();
+
+                        return sortedDates.map(date => (
+                          <div key={date} className="space-y-3">
+                            <h3 className={`text-sm font-bold uppercase tracking-wider ${textSecondaryClass} px-1 pt-4 pb-1`}>
+                              {getFormattedDate(date)}
+                            </h3>
+                            {groups[date].map((task: any) => (
+                              <div
+                                key={`${task.id}-${task.displayDate || task.dueDate}`}
+                                className={`flex items-start gap-4 p-5 rounded-2xl border transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 border-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
+                              >
+                                <button
+                                  onClick={() => toggleTask(task.id)}
+                                  className="flex-shrink-0 transition-transform active:scale-125 hover:scale-110 mt-0.25"
+                                >
+                                  <Circle className={`w-6 h-6 ${darkMode ? 'text-zinc-700' : 'text-zinc-300'}`} strokeWidth={iconStrokeWidth} />
+                                </button>
+
+                                <div className="flex-1 min-w-0">
+                                  <button
+                                    onClick={() => openEditModal(task)}
+                                    className="w-full text-left focus:outline-none"
                                   >
-                                    Due
-                                  </span>
-                                )}
-                                {task.displayDate && task.displayDate >= todayStr && (
-                                  <span
-                                    className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-                                  >
-                                    {task.displayDate === todayStr
-                                      ? 'Today'
-                                      : isTomorrow(task.displayDate)
-                                        ? 'Tomorrow'
-                                        : task.displayDate}
-                                  </span>
-                                )}
+                                    <p className={`font-medium ${textClass} break-words pr-2 hover:opacity-80 transition-opacity`}>{task.text}</p>
+                                  </button>
 
-                                {(task.isDailyRecurring || task.repeat === 'weekly' || task.repeat === 'monthly') && (
-                                  <>
-                                    {task.isDailyRecurring && (
+                                  <div className="flex flex-wrap gap-2 mt-1.5 items-center">
+                                    {task.displayDate && task.displayDate < todayStr && (
                                       <span
-                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#6B7280]/10 text-[#6B7280] border border-[#6B7280]/20' : 'bg-zinc-100 text-zinc-800 border border-zinc-200'}`}
-                                        title="Daily recurring task"
+                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex-shrink-0 ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
+                                        title={`Scheduled for ${task.displayDate}`}
                                       >
-                                        Daily
+                                        Due
                                       </span>
                                     )}
-                                    {task.repeat === 'weekly' && (
-                                      <span
-                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-800 border border-blue-300'}`}
-                                        title="Weekly recurring task"
-                                      >
-                                        Weekly
-                                      </span>
+
+                                    {(task.isDailyRecurring || task.repeat === 'weekly' || task.repeat === 'monthly') && (
+                                      <>
+                                        {task.isDailyRecurring && (
+                                          <span
+                                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#6B7280]/10 text-[#6B7280] border border-[#6B7280]/20' : 'bg-zinc-100 text-zinc-800 border border-zinc-200'}`}
+                                            title="Daily recurring task"
+                                          >
+                                            Daily
+                                          </span>
+                                        )}
+                                        {task.repeat === 'weekly' && (
+                                          <span
+                                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-blue-100 text-blue-800 border border-blue-300'}`}
+                                            title="Weekly recurring task"
+                                          >
+                                            Weekly
+                                          </span>
+                                        )}
+                                        {task.repeat === 'monthly' && (
+                                          <span
+                                            className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-100 text-purple-800 border border-purple-300'}`}
+                                            title="Monthly recurring task"
+                                          >
+                                            Monthly
+                                          </span>
+                                        )}
+                                      </>
                                     )}
-                                    {task.repeat === 'monthly' && (
-                                      <span
-                                        className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-100 text-purple-800 border border-purple-300'}`}
-                                        title="Monthly recurring task"
-                                      >
-                                        Monthly
-                                      </span>
-                                    )}
-                                  </>
-                                )}
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-1.5 mt-0.5">
+                                  <button
+                                    onClick={() => openCalendarModal(task)}
+                                    className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
+                                    title={t('tasks.calendarTooltip')}
+                                  >
+                                    <Calendar className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                                  </button>
+                                  <button
+                                    onClick={() => confirmDelete(task)}
+                                    className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-rose-500 hover:bg-zinc-800' : 'text-zinc-400 hover:text-rose-600 hover:bg-zinc-100'} rounded-full transition-all`}
+                                    title={t('tasks.deleteTooltip')}
+                                  >
+                                    <Trash2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-
-                            <div className="flex gap-1.5 mt-0.5">
-                              <button
-                                onClick={() => openEditModal(task)}
-                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
-                                title={t('tasks.editTooltip')}
-                              >
-                                <Edit2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
-                              </button>
-                              <button
-                                onClick={() => openCalendarModal(task)}
-                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
-                                title={t('tasks.calendarTooltip')}
-                              >
-                                <Calendar className="w-4 h-4" strokeWidth={iconStrokeWidth} />
-                              </button>
-                              <button
-                                onClick={() => confirmDelete(task)}
-                                className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-rose-500 hover:bg-zinc-800' : 'text-zinc-400 hover:text-rose-600 hover:bg-zinc-100'} rounded-full transition-all`}
-                                title={t('tasks.deleteTooltip')}
-                              >
-                                <Trash2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
-                              </button>
-                            </div>
+                            ))}
                           </div>
                         ));
                       })()
@@ -1286,7 +1326,7 @@ export default function App() {
                     ) : sortedTasks.filter(t => !t.completed).map(task => (
                       <div
                         key={task.id}
-                        className={`flex items-center gap-4 p-5 rounded-2xl border border-zinc-900 transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
+                        className={`flex items-center gap-4 p-5 rounded-2xl border transition-all duration-300 ${darkMode ? 'bg-zinc-900/40 hover:bg-zinc-900 border-zinc-900 hover:border-zinc-800' : 'bg-white border-zinc-200 hover:border-zinc-300'}`}
                       >
                         <button
                           onClick={() => toggleTask(task.id)}
@@ -1296,38 +1336,22 @@ export default function App() {
                         </button>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className={`font-medium ${textClass}`}>{task.text}</p>
-                            {task.dueDate < todayStr && !task.completed && (
-                              <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
-                                title={`Scheduled for ${task.dueDate}`}
-                              >
-                                Due
-                              </span>
-                            )}
-                            {task.dueDate === todayStr && (
-                              <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-                              >
-                                Today
-                              </span>
-                            )}
-                            {task.dueDate > todayStr && isTomorrow(task.dueDate) && (
-                              <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-                              >
-                                Tomorrow
-                              </span>
-                            )}
-                            {task.dueDate > todayStr && !isTomorrow(task.dueDate) && (
-                              <span
-                                className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}
-                              >
-                                {task.dueDate}
-                              </span>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => openEditModal(task)}
+                            className="w-full text-left focus:outline-none"
+                          >
+                            <div className="flex items-center gap-2">
+                              <p className={`font-medium ${textClass} hover:opacity-80 transition-opacity`}>{task.text}</p>
+                              {task.dueDate < todayStr && !task.completed && (
+                                <span
+                                  className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${darkMode ? 'bg-[#374151]/10 text-[#374151] border border-[#374151]/20' : 'bg-black text-white'}`}
+                                  title={`Scheduled for ${task.dueDate}`}
+                                >
+                                  Due
+                                </span>
+                              )}
+                            </div>
+                          </button>
                           {task.repeat !== 'none' && (
                             <div className="flex gap-3 mt-1.5 text-xs font-medium">
                               <span className="flex items-center gap-1.5 uppercase tracking-widest text-[9px] bg-zinc-800 px-2 py-0.5 rounded-full text-zinc-400 border border-zinc-700/50">
@@ -1338,13 +1362,6 @@ export default function App() {
                         </div>
 
                         <div className="flex gap-1.5">
-                          <button
-                            onClick={() => openEditModal(task)}
-                            className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
-                            title={t('tasks.editTooltip')}
-                          >
-                            <Edit2 className="w-4 h-4" strokeWidth={iconStrokeWidth} />
-                          </button>
                           <button
                             onClick={() => openCalendarModal(task)}
                             className={`p-2.5 ${darkMode ? 'text-zinc-600 hover:text-[#374151] hover:bg-zinc-800' : 'text-zinc-400 hover:text-black hover:bg-zinc-100'} rounded-full transition-all`}
