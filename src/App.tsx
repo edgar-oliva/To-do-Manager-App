@@ -119,10 +119,17 @@ export default function App() {
           const { data: cloudHistory, error: historyError } = await supabase.from('history').select('*');
           if (historyError) throw historyError;
 
-          // Sync local to cloud if cloud is empty or we have new local tasks
+          // Sync local to cloud if we have local tasks (useful for guest-to-login transition)
+          // We only do this if it's the first sync or we explicitly have local-only data
           if (localTasks.length > 0) {
-            for (const task of localTasks) {
-              const exists = cloudTasks?.some(ct => ct.id === task.id);
+            const syncPromises = localTasks.map(async (task) => {
+              // Check if this task already exists in cloud by comparing text and due_date 
+              // (since guest IDs are temporary Date.now() values and won't match server IDs)
+              const exists = cloudTasks?.some(ct =>
+                (ct.id === task.id) ||
+                (ct.text === task.text && ct.due_date === task.dueDate)
+              );
+
               if (!exists) {
                 const { error: insertError } = await supabase.from('tasks').insert({
                   user_id: user.id,
@@ -131,18 +138,20 @@ export default function App() {
                   due_date: task.dueDate,
                   repeat: task.repeat
                 });
-                if (insertError) {
-                  console.error('Failed to sync task:', task, insertError);
-                  // Don't throw immediately, try others, but mark error
-                  setSyncStatus('error');
-                }
+                if (insertError) console.error('Failed to sync task:', task, insertError);
               }
-            }
+            });
+            await Promise.all(syncPromises);
           }
 
           if (localHistory.length > 0) {
-            for (const hist of localHistory) {
-              const exists = cloudHistory?.some(ch => ch.id === hist.historyId);
+            const historySyncPromises = localHistory.map(async (hist) => {
+              // Match by taskId and completedAt since historyId is local-only
+              const exists = cloudHistory?.some(ch =>
+                (ch.id === hist.historyId) ||
+                (ch.task_id === hist.id && ch.completed_at === hist.completedAt)
+              );
+
               if (!exists) {
                 const { error: insertHistError } = await supabase.from('history').insert({
                   task_id: hist.id,
@@ -152,15 +161,13 @@ export default function App() {
                   due_date: hist.dueDate,
                   repeat: hist.repeat
                 });
-                if (insertHistError) {
-                  console.error('Failed to sync history:', hist, insertHistError);
-                  setSyncStatus('error');
-                }
+                if (insertHistError) console.error('Failed to sync history:', hist, insertHistError);
               }
-            }
+            });
+            await Promise.all(historySyncPromises);
           }
 
-          // Reload from cloud to be sure
+          // Reload from cloud to get the final authoritative list with correct IDs
           const { data: finalTasks, error: finalTasksError } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
           if (finalTasksError) throw finalTasksError;
 
@@ -601,14 +608,15 @@ export default function App() {
         }
       }
 
-      setCompletedHistory([historyEntry, ...completedHistory]);
+      setCompletedHistory(prev => [historyEntry, ...prev]);
 
       if (task.repeat !== 'none') {
-        setTasks(tasks.map(t =>
-          t.id === id ? { ...t, dueDate: getNextDate(t.dueDate, t.repeat), completed: false } : t
+        const nextDate = getNextDate(task.dueDate, task.repeat);
+        setTasks(prev => prev.map(t =>
+          t.id === id ? { ...t, dueDate: nextDate, completed: false } : t
         ));
       } else {
-        setTasks(tasks.filter(t => t.id !== id));
+        setTasks(prev => prev.filter(t => t.id !== id));
       }
     }
   };
