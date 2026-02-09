@@ -287,12 +287,18 @@ export default function App() {
             }));
 
             setTasks(current => {
-              // Preserve tasks that are still only local (IDs > 10000000000)
-              // and haven't matched a cloud task yet
+              const now = Date.now();
+              // Preserve tasks that are still very new or only local
               const localOnly = current.filter(t => {
                 const isLocal = t.id > 10000000000;
                 if (!isLocal) return false;
-                // Don't keep if a cloud task with same content already exists
+
+                // CRITICAL: If the task was created in the last 10 seconds, 
+                // KEEP IT even if it's not in the cloud yet. This stops the flicker.
+                const isVeryNew = (t as any).createdAt && (now - (t as any).createdAt < 10000);
+                if (isVeryNew) return true;
+
+                // Otherwise, keep only if it hasn't matched a cloud task yet
                 return !mappedCloud.some(ct => ct.text === t.text && ct.dueDate === t.dueDate);
               });
 
@@ -328,17 +334,25 @@ export default function App() {
           schema: 'public',
         },
         () => {
-          // Debounce refresh to handle multi-step updates (e.g. move task to history)
+          console.log('Postgres change detected. Refreshing...');
           clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(() => {
-            refreshData();
-          }, 300);
+          debounceTimer = setTimeout(() => refreshData(), 500);
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'data_changed' },
+        () => {
+          console.log('Data changed broadcast received. Refreshing...');
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => refreshData(), 200);
         }
       )
       .on(
         'broadcast',
         { event: 'app_reset' },
         () => {
+          console.log('App reset broadcast received.');
           // Received RESET signal from another device
           console.log('Received app_reset signal. Clearing local data.');
           setTasks([]);
@@ -611,6 +625,7 @@ export default function App() {
 
       const newTaskObj = {
         id: Date.now(),
+        createdAt: Date.now(), // Add local tracking
         text: newTask,
         completed: false,
         dueDate: isScheduled ? scheduleTaskDate : selectedDate,
@@ -621,8 +636,16 @@ export default function App() {
         const updated = [...newTasks, newTaskObj];
         if (user) {
           setSyncStatus('syncing');
-          // Remove ID from insert payload to let Postgres generate it
-          const { id, ...taskPayload } = newTaskObj;
+
+          // Broadcast local change immediately
+          supabase.channel('schema-db-changes').send({
+            type: 'broadcast',
+            event: 'data_changed',
+            payload: {}
+          });
+
+          // Remove ID/createdAt from insert payload
+          const { id, createdAt, ...taskPayload } = newTaskObj as any;
 
           supabase.from('tasks').insert({
             user_id: user.id,
@@ -742,7 +765,6 @@ export default function App() {
       if (user) {
         setSyncStatus('syncing');
         // Move to history in Supabase
-        // Omit 'id' to let Postgres generate it
         supabase.from('history').insert({
           task_id: historyEntry.id,
           user_id: user.id,
@@ -754,6 +776,13 @@ export default function App() {
           if (error) {
             console.error('Error adding history to Supabase:', error);
             setSyncStatus('error');
+          } else {
+            // Broadcast change
+            supabase.channel('schema-db-changes').send({
+              type: 'broadcast',
+              event: 'data_changed',
+              payload: {}
+            });
           }
         });
 
