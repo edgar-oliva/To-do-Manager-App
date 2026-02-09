@@ -125,12 +125,18 @@ export default function App() {
             const syncPromises = localTasks.map(async (task) => {
               // Check if this task already exists in cloud by comparing text and due_date 
               // (since guest IDs are temporary Date.now() values and won't match server IDs)
-              const exists = cloudTasks?.some(ct =>
+              const existsInTasks = cloudTasks?.some(ct =>
                 (ct.id === task.id) ||
                 (ct.text === task.text && ct.due_date === task.dueDate)
               );
 
-              if (!exists) {
+              // Also check history to prevent re-inserting tasks completed on another device
+              const existsInHistory = cloudHistory?.some(ch =>
+                (ch.task_id === task.id) ||
+                (ch.text === task.text && ch.due_date === task.dueDate)
+              );
+
+              if (!existsInTasks && !existsInHistory) {
                 const { error: insertError } = await supabase.from('tasks').insert({
                   user_id: user.id,
                   text: task.text,
