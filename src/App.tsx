@@ -221,6 +221,72 @@ export default function App() {
     loadInitialData();
   }, [user, isGuest]);
 
+  // Realtime subscription & Window Focus Refetch
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshData = async () => {
+      try {
+        const { data: cloudTasks } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        const { data: cloudHistory } = await supabase.from('history').select('*').order('completed_at', { ascending: false });
+
+        if (cloudTasks) {
+          setTasks(cloudTasks.map(t => ({
+            id: t.id,
+            text: t.text,
+            completed: t.completed,
+            dueDate: t.due_date,
+            repeat: t.repeat || 'none'
+          })));
+        }
+
+        if (cloudHistory) {
+          setCompletedHistory(cloudHistory.map(h => ({
+            historyId: h.id,
+            id: h.task_id,
+            text: h.text,
+            completed: true,
+            dueDate: h.due_date,
+            repeat: h.repeat || 'none',
+            completedAt: h.completed_at
+          })));
+        }
+      } catch (err) {
+        console.error('Error refreshing data:', err);
+      }
+    };
+
+    // 1. Subscribe to Supabase changes
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+        },
+        () => {
+          refreshData();
+        }
+      )
+      .subscribe();
+
+    // 2. Refresh on window focus
+    const onFocus = () => {
+      refreshData();
+    };
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') onFocus();
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('visibilitychange', onFocus); // cleanup is simplified
+    };
+  }, [user]);
+
 
   // States handled in useEffect above
   const [newTask, setNewTask] = useState('');
