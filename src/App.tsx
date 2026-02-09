@@ -171,7 +171,18 @@ export default function App() {
           }
 
           if (localHistory.length > 0) {
+            // Check for reset marker in cloud (or use existing if available in scope)
+            const resetMarker = cloudTasks?.find(t => t.text === '___sys_reset_checkpoint___');
+            const resetTime = resetMarker ? new Date(resetMarker.created_at).getTime() : 0;
+
             const historySyncPromises = localHistory.map(async (hist) => {
+              // PRE-SYNC FILTER:
+              // If Reset Marker exists, ignore any local history item created BEFORE the marker.
+              // Note: hist.id is the original task ID.
+              if (resetMarker && hist.id < resetTime) {
+                return;
+              }
+
               // Match by taskId and completedAt since historyId is local-only
               const exists = cloudHistory?.some(ch =>
                 (ch.id === hist.historyId) ||
@@ -258,21 +269,35 @@ export default function App() {
           const resetMarker = cloudTasks.find(t => t.text === '___sys_reset_checkpoint___');
 
           if (resetMarker) {
-            // WIPE local storage blindly if we see this, then show empty state (minus marker)
+            console.log('Reset marker found during refresh. Clearing local state.');
             setTasks([]);
             setCompletedHistory([]);
-            // We don't save to localStorage here explicitly, user interaction will trigger save
-            // But actually we should clear it.
             localStorage.removeItem('tasks');
             localStorage.removeItem('completedHistory');
           } else {
-            setTasks(cloudTasks.map(t => ({
+            // Filter out reset marker
+            const filteredTasks = cloudTasks.filter(t => t.text !== '___sys_reset_checkpoint___');
+
+            const mappedCloud = filteredTasks.map(t => ({
               id: t.id,
               text: t.text,
               completed: t.completed,
               dueDate: t.due_date,
               repeat: t.repeat || 'none'
-            })));
+            }));
+
+            setTasks(current => {
+              // Preserve tasks that are still only local (IDs > 10000000000)
+              // and haven't matched a cloud task yet
+              const localOnly = current.filter(t => {
+                const isLocal = t.id > 10000000000;
+                if (!isLocal) return false;
+                // Don't keep if a cloud task with same content already exists
+                return !mappedCloud.some(ct => ct.text === t.text && ct.dueDate === t.dueDate);
+              });
+
+              return [...mappedCloud, ...localOnly];
+            });
           }
         }
 
@@ -293,6 +318,7 @@ export default function App() {
     };
 
     // 1. Subscribe to Supabase changes
+    let debounceTimer: any;
     const channel = supabase
       .channel('schema-db-changes')
       .on(
@@ -302,7 +328,11 @@ export default function App() {
           schema: 'public',
         },
         () => {
-          refreshData();
+          // Debounce refresh to handle multi-step updates (e.g. move task to history)
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            refreshData();
+          }, 300);
         }
       )
       .on(
@@ -978,7 +1008,7 @@ export default function App() {
 
   // 2. Get history entries completed today locally
   const historyCompletedToday = completedHistory
-    .filter(h => h.completedAt === todayStr)
+    .filter(h => h.completedAt && h.completedAt.startsWith(todayStr))
     .map(h => ({ ...h, id: h.historyId, isFromHistory: true }));
 
   // 3. Combine them for the current view
