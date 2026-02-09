@@ -122,7 +122,17 @@ export default function App() {
           // Sync local to cloud if we have local tasks (useful for guest-to-login transition)
           // We only do this if it's the first sync or we explicitly have local-only data
           if (localTasks.length > 0) {
+            // Check for reset marker in cloud
+            const resetMarker = cloudTasks?.find(t => t.text === '___sys_reset_checkpoint___');
+            const resetTime = resetMarker ? new Date(resetMarker.created_at).getTime() : 0;
+
             const syncPromises = localTasks.map(async (task) => {
+              // PRE-SYNC FILTER:
+              // 1. If Reset Marker exists, ignore any local task created BEFORE the marker.
+              if (resetMarker && task.id < resetTime) {
+                return; // Skip this task (effectively deleting it locally)
+              }
+
               // Check if this task already exists in cloud by comparing text and due_date 
               // (since guest IDs are temporary Date.now() values and won't match server IDs)
               // SMART SYNC: Only sync if it looks like a local/temp task (ID is large timestamp)
@@ -191,7 +201,10 @@ export default function App() {
           if (finalHistoryError) throw finalHistoryError;
 
           if (finalTasks) {
-            setTasks(finalTasks.map(t => ({
+            // Filter out the reset marker from UI
+            const filteredTasks = finalTasks.filter(t => t.text !== '___sys_reset_checkpoint___');
+
+            setTasks(filteredTasks.map(t => ({
               id: t.id,
               text: t.text,
               completed: t.completed,
@@ -241,13 +254,26 @@ export default function App() {
         const { data: cloudHistory } = await supabase.from('history').select('*').order('completed_at', { ascending: false });
 
         if (cloudTasks) {
-          setTasks(cloudTasks.map(t => ({
-            id: t.id,
-            text: t.text,
-            completed: t.completed,
-            dueDate: t.due_date,
-            repeat: t.repeat || 'none'
-          })));
+          // Check for reset marker
+          const resetMarker = cloudTasks.find(t => t.text === '___sys_reset_checkpoint___');
+
+          if (resetMarker) {
+            // WIPE local storage blindly if we see this, then show empty state (minus marker)
+            setTasks([]);
+            setCompletedHistory([]);
+            // We don't save to localStorage here explicitly, user interaction will trigger save
+            // But actually we should clear it.
+            localStorage.removeItem('tasks');
+            localStorage.removeItem('completedHistory');
+          } else {
+            setTasks(cloudTasks.map(t => ({
+              id: t.id,
+              text: t.text,
+              completed: t.completed,
+              dueDate: t.due_date,
+              repeat: t.repeat || 'none'
+            })));
+          }
         }
 
         if (cloudHistory) {
@@ -443,6 +469,15 @@ export default function App() {
             type: 'broadcast',
             event: 'app_reset',
             payload: {}
+          });
+
+          // Insert RESET CHECKPOINT to persist the reset state for offline devices
+          await supabase.from('tasks').insert({
+            user_id: user.id,
+            text: '___sys_reset_checkpoint___',
+            completed: true,
+            due_date: new Date().toISOString().split('T')[0], // Today
+            repeat: 'none'
           });
         } catch (err) {
           console.error('Failed to clear cloud data:', err);
