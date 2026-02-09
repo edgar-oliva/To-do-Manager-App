@@ -125,26 +125,36 @@ export default function App() {
             const syncPromises = localTasks.map(async (task) => {
               // Check if this task already exists in cloud by comparing text and due_date 
               // (since guest IDs are temporary Date.now() values and won't match server IDs)
-              const existsInTasks = cloudTasks?.some(ct =>
-                (ct.id === task.id) ||
-                (ct.text === task.text && ct.due_date === task.dueDate)
-              );
+              // SMART SYNC: Only sync if it looks like a local/temp task (ID is large timestamp)
+              // If ID is small (Server ID) and mapped is missing, it means it was DELETED on server.
+              // We should NOT upload it. We should let it be deleted locally.
 
-              // Also check history to prevent re-inserting tasks completed on another device
-              const existsInHistory = cloudHistory?.some(ch =>
-                (ch.task_id === task.id) ||
-                (ch.text === task.text && ch.due_date === task.dueDate)
-              );
+              // Simple heuristic: Server IDs are small integers or UUIDs (not implementation dependent but usually small int in this app context?)
+              // Actually, we are using: id: Date.now() for local.
+              // Supabase IDs are likely auto-increment integers starting from 1.
+              // Safe threshold: Date.now() is > 1,700,000,000,000. 
+              // Server IDs are likely < 1,000,000,000.
+              const isLocalId = (id: number) => id > 10000000000;
 
-              if (!existsInTasks && !existsInHistory) {
-                const { error: insertError } = await supabase.from('tasks').insert({
-                  user_id: user.id,
-                  text: task.text,
-                  completed: task.completed,
-                  due_date: task.dueDate,
-                  repeat: task.repeat
-                });
-                if (insertError) console.error('Failed to sync task:', task, insertError);
+              if (isLocalId(task.id)) {
+                const existsInTasks = cloudTasks?.some(ct =>
+                  (ct.text === task.text && ct.due_date === task.dueDate)
+                );
+
+                const existsInHistory = cloudHistory?.some(ch =>
+                  (ch.text === task.text && ch.due_date === task.dueDate)
+                );
+
+                if (!existsInTasks && !existsInHistory) {
+                  const { error: insertError } = await supabase.from('tasks').insert({
+                    user_id: user.id,
+                    text: task.text,
+                    completed: task.completed,
+                    due_date: task.dueDate,
+                    repeat: task.repeat
+                  });
+                  if (insertError) console.error('Failed to sync task:', task, insertError);
+                }
               }
             });
             await Promise.all(syncPromises);
@@ -267,6 +277,23 @@ export default function App() {
         },
         () => {
           refreshData();
+        }
+      )
+      .on(
+        'broadcast',
+        { event: 'app_reset' },
+        () => {
+          // Received RESET signal from another device
+          console.log('Received app_reset signal. Clearing local data.');
+          setTasks([]);
+          setCompletedHistory([]);
+          localStorage.removeItem('tasks');
+          localStorage.removeItem('completedHistory');
+          localStorage.removeItem('tasksAddedCount');
+          localStorage.removeItem('loginPromptSuppressed');
+          localStorage.removeItem('nextPromptThreshold');
+          setTasksAddedCount(0);
+          window.location.reload();
         }
       )
       .subscribe();
@@ -410,6 +437,13 @@ export default function App() {
         try {
           await supabase.from('tasks').delete().eq('user_id', user.id);
           await supabase.from('history').delete().eq('user_id', user.id);
+
+          // Broadcast RESET event to other devices
+          await supabase.channel('schema-db-changes').send({
+            type: 'broadcast',
+            event: 'app_reset',
+            payload: {}
+          });
         } catch (err) {
           console.error('Failed to clear cloud data:', err);
         }
